@@ -7,20 +7,29 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="styles.css?v=7" />
+    <link rel="stylesheet" href="styles.css?v=8" />
   </head>
   <body>
     <section class="auth-screen" id="authScreen">
-      <div class="auth-card">
-        <div class="auth-brand">Tasktracker</div>
-        <h1>Welcome back</h1>
-        <p>Sign in to your shared finance workspace.</p>
-        <form id="loginForm">
-          <label>Email<input id="loginEmail" type="email" autocomplete="email" required /></label>
-          <label>Password<input id="loginPassword" type="password" autocomplete="current-password" required /></label>
-          <p class="auth-error" id="authError" role="alert"></p>
-          <button class="primary auth-submit" type="submit">Sign in</button>
-        </form>
+      <div class="auth-layout">
+        <aside class="auth-sidebar">
+          <div class="auth-brand">Tasktracker</div>
+          <div class="auth-preview">
+            <span>SHARED WORKSPACE</span>
+            <h2>Halifax and Charlottetown, working from the same list.</h2>
+            <div class="auth-people"><div><span class="avatar coral">M</span><p><strong>Michaila</strong><small>Controller · Halifax</small></p></div><div><span class="avatar teal">B</span><p><strong>Brady</strong><small>Senior Accountant · Charlottetown</small></p></div></div>
+          </div>
+        </aside>
+        <div class="auth-card">
+          <div class="auth-form-heading"><span>WELCOME BACK</span><h1>Sign in</h1><p>Enter your work email to continue.</p></div>
+          <form id="loginForm">
+            <label>Email<input id="loginEmail" type="email" autocomplete="email" placeholder="name@company.ca" required /></label>
+            <label>Password<div class="password-field"><input id="loginPassword" type="password" autocomplete="current-password" required /><button type="button" id="togglePassword" aria-label="Show password">Show</button></div></label>
+            <p class="auth-error" id="authError" role="alert"></p>
+            <button class="primary auth-submit" type="submit">Sign in</button>
+          </form>
+          <p class="auth-help">Having trouble signing in? Contact the workspace administrator.</p>
+        </div>
       </div>
     </section>
     <div class="app-shell" id="appShell" hidden>
@@ -50,7 +59,7 @@
       <section class="view active" id="overviewView">
         <div class="overview-grid">
           <section class="card">
-            <div class="card-heading"><div><h2>My to-do list</h2><p>Michaila’s next tasks</p></div><button class="link" data-go="tasks">All tasks</button></div>
+            <div class="card-heading"><div><h2>My to-do list</h2><p id="myTasksSubtitle">Your next tasks</p></div><button class="link" data-go="tasks">All tasks</button></div>
             <div class="task-list" id="overviewTasks"></div>
           </section>
           <section class="card">
@@ -103,7 +112,7 @@
           <label>Due date<input id="dueDate" type="date" /></label>
         </div>
         <div class="field-row"><label>Project<select id="project"><option>Month-end close</option><option>FY26 planning</option><option>Systems review</option><option>General</option></select></label><label>Status<select id="status"><option value="todo">To do</option><option value="doing">In progress</option><option value="waiting">Waiting</option></select></label></div>
-        <label class="check-label"><input id="recurring" type="checkbox" />Recurring task</label>
+        <p class="form-help">For work that repeats, use the Recurring tasks schedule instead.</p>
         <div class="actions"><button type="button" id="cancelForm">Cancel</button><button type="submit" class="primary">Add task</button></div>
       </form>
     </dialog>
@@ -126,7 +135,8 @@
         <div class="actions"><button type="button" data-close-update>Cancel</button><button type="submit" class="primary">Share update</button></div>
       </form>
     </dialog>
-    <script type="module" src="app.js?v=7"></script>
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+    <script type="module" src="app.js?v=8"></script>
     </div>
   </body>
 </html>

@@ -1,14 +1,5 @@
 import { auth, taskStore } from './supabase.js';
 
-const starterTasks = [
-  { id: 1, name: 'Review bank reconciliation', assignee: 'Michaila', due: '2026-08-13', project: 'Month-end close', recurring: true, frequency: 'monthly', status: 'doing', note: 'Checking the final two reconciling items.', completed: false },
-  { id: 2, name: 'Approve payroll journal', assignee: 'Michaila', due: '2026-08-13', project: 'Month-end close', recurring: false, status: 'todo', note: '', completed: false },
-  { id: 3, name: 'Update monthly reporting package', assignee: 'Brady', due: '2026-08-14', project: 'Month-end close', recurring: true, frequency: 'monthly', status: 'doing', note: 'Income statement is ready; cash flow is next.', completed: false },
-  { id: 4, name: 'Prepare budget assumptions', assignee: 'Michaila', due: '2026-08-18', project: 'FY26 planning', recurring: false, status: 'waiting', note: 'Waiting for Greg’s headcount figures.', completed: false },
-  { id: 5, name: 'Review software access list', assignee: 'Brady', due: '2026-08-20', project: 'Systems review', recurring: false, status: 'todo', note: '', completed: false },
-  { id: 6, name: 'Post recurring accruals', assignee: 'Brady', due: '2026-08-13', project: 'Month-end close', recurring: true, frequency: 'monthly', status: 'todo', note: '', completed: true }
-];
-
 const projects = [
   { name: 'Month-end close', description: 'Complete August close and reporting', due: 'Aug 19', color: 'coral' },
   { name: 'FY26 planning', description: 'Build next year’s operating plan', due: 'Sep 5', color: 'blue' },
@@ -16,6 +7,8 @@ const projects = [
 ];
 let tasks = [];
 let taskFilter = 'open';
+let currentProfile = null;
+let isSaving = false;
 const dialog = document.querySelector('#taskDialog');
 const updateDialog = document.querySelector('#updateDialog');
 const recurringDialog = document.querySelector('#recurringDialog');
@@ -26,10 +19,12 @@ async function startApp() {
   if (!auth.getSession()) return;
   try {
     const profile = await auth.profile();
+    currentProfile = profile;
     document.querySelector('#signedInName').textContent = profile.display_name;
     document.querySelector('#signedInRole').textContent = profile.role;
     authScreen.hidden = true;
     appShell.hidden = false;
+    document.querySelector('#myTasksSubtitle').textContent = profile.role === 'admin' ? 'Open tasks across the team' : `${profile.display_name}’s next tasks`;
     await loadTasks();
   } catch (error) {
     auth.signOut();
@@ -51,18 +46,18 @@ function setSyncStatus(message, state = '') {
   indicator.textContent = message;
   indicator.className = `sync-status ${state}`;
 }
+function showToast(message, type = '') {
+  const toast = document.querySelector('#toast');
+  toast.textContent = message;
+  toast.className = `toast ${type} show`;
+  window.clearTimeout(showToast.timer);
+  showToast.timer = window.setTimeout(() => { toast.className = 'toast'; }, 3000);
+}
 async function loadTasks({ quiet = false } = {}) {
   try {
     if (!quiet) setSyncStatus('Connecting…');
     const records = await taskStore.list();
-    if (!records.length) {
-      tasks = await Promise.all(starterTasks.map(task => {
-        const { id, ...seed } = task;
-        return taskStore.create(toDatabase(seed));
-      }));
-    } else {
-      tasks = records;
-    }
+    tasks = records;
     tasks = tasks.map(fromDatabase);
     render();
     setSyncStatus('Up to date', 'online');
@@ -92,9 +87,14 @@ function frequencyLabel(frequency) { return { weekly: 'Every week', monthly: 'Ev
 function nextDueDate(date, frequency) {
   const next = new Date(`${date}T12:00:00`);
   if (frequency === 'weekly') next.setDate(next.getDate() + 7);
-  if (frequency === 'monthly') next.setMonth(next.getMonth() + 1);
-  if (frequency === 'quarterly') next.setMonth(next.getMonth() + 3);
-  if (frequency === 'yearly') next.setFullYear(next.getFullYear() + 1);
+  if (frequency !== 'weekly') {
+    const months = { monthly: 1, quarterly: 3, yearly: 12 }[frequency] || 1;
+    const day = next.getDate();
+    next.setDate(1);
+    next.setMonth(next.getMonth() + months);
+    const lastDay = new Date(next.getFullYear(), next.getMonth() + 1, 0).getDate();
+    next.setDate(Math.min(day, lastDay));
+  }
   return next.toISOString().slice(0, 10);
 }
 
@@ -124,7 +124,8 @@ function projectMarkup(project) {
 }
 
 function render() {
-  document.querySelector('#overviewTasks').innerHTML = tasks.filter(task => !task.completed && task.assignee === 'Michaila').slice(0, 4).map(taskMarkup).join('');
+  const personalTasks = tasks.filter(task => !task.completed && (currentProfile?.role === 'admin' || task.assignee === currentProfile?.display_name));
+  document.querySelector('#overviewTasks').innerHTML = personalTasks.length ? personalTasks.slice(0, 4).map(taskMarkup).join('') : '<p class="empty">No open tasks.</p>';
   document.querySelector('#overviewProjects').innerHTML = projects.map(projectMarkup).join('');
   document.querySelector('#projectList').innerHTML = projects.map(projectMarkup).join('');
 
@@ -198,7 +199,7 @@ document.querySelectorAll('[data-close-update]').forEach(button => button.addEve
 document.querySelector('#taskForm').addEventListener('submit', async event => {
   event.preventDefault();
   setSyncStatus('Saving…');
-  await createTask({ name: document.querySelector('#taskName').value.trim(), assignee: document.querySelector('#assignee').value, due: document.querySelector('#dueDate').value || null, project: document.querySelector('#project').value, recurring: document.querySelector('#recurring').checked, frequency: 'monthly', paused: false, recurrenceGenerated: false, status: document.querySelector('#status').value, note: '', completed: false });
+  await createTask({ name: document.querySelector('#taskName').value.trim(), assignee: document.querySelector('#assignee').value, due: document.querySelector('#dueDate').value || null, project: document.querySelector('#project').value, recurring: false, frequency: 'monthly', paused: false, recurrenceGenerated: false, status: document.querySelector('#status').value, note: '', completed: false });
   event.target.reset(); dialog.close(); render(); setSyncStatus('Up to date', 'online');
 });
 document.querySelector('#recurringForm').addEventListener('submit', async event => {
@@ -236,11 +237,26 @@ document.querySelector('#loginForm').addEventListener('submit', async event => {
 document.querySelector('#signOut').addEventListener('click', () => {
   auth.signOut();
   tasks = [];
+  currentProfile = null;
   appShell.hidden = true;
   authScreen.hidden = false;
+});
+document.querySelector('#togglePassword').addEventListener('click', event => {
+  const password = document.querySelector('#loginPassword');
+  const show = password.type === 'password';
+  password.type = show ? 'text' : 'password';
+  event.currentTarget.textContent = show ? 'Hide' : 'Show';
+  event.currentTarget.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
+});
+window.addEventListener('unhandledrejection', event => {
+  console.error(event.reason);
+  if (auth.getSession()) {
+    setSyncStatus('Unable to save', 'error');
+    showToast('Something went wrong. Please try again.', 'error');
+  }
 });
 
 startApp();
 setInterval(() => {
-  if (auth.getSession() && !document.querySelector('dialog[open]')) loadTasks({ quiet: true });
+  if (auth.getSession() && !isSaving && !document.querySelector('dialog[open]')) loadTasks({ quiet: true });
 }, 5000);

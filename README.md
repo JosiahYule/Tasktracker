@@ -30,7 +30,9 @@ Then visit `http://localhost:4173`.
 The app is configured to use Supabase for shared persistence. Before opening it:
 
 1. Open the Supabase project SQL Editor.
-2. Run `supabase-schema.sql` once to create the tables, validation, and authenticated row-level security policies.
+2. Open `supabase-schema.sql`, copy the **entire file** into a new SQL Editor query, and
+   run it before inserting any profiles. The result should list both `profiles` and
+   `tasks`.
 3. In **Authentication → Users**, create accounts for Michaila, Brady, and the administrator.
 4. Copy each user UUID and create their profile in the SQL Editor:
 
@@ -42,6 +44,10 @@ insert into public.profiles (id, display_name, role) values
 ```
 
 5. Start the local server and sign in with one of the accounts.
+
+If Supabase reports `relation "public.profiles" does not exist`, the schema migration
+has not been run successfully yet. Run all of `supabase-schema.sql`, confirm its final
+query lists `public.profiles`, and only then run the profile `insert` statement.
 
 The browser uses the publishable key in `supabase.js`; no secret or service-role key is
 stored in the frontend. The app refreshes shared data every five seconds so updates made

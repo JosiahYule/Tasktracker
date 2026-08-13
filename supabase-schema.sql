@@ -22,6 +22,8 @@ drop policy if exists "Tasktracker users can create tasks" on public.tasks;
 drop policy if exists "Tasktracker users can update tasks" on public.tasks;
 drop policy if exists "Tasktracker users can delete tasks" on public.tasks;
 
+-- Run this entire file before inserting profile records. The profiles table does not
+-- exist in a new Supabase project until this migration has completed successfully.
 create table if not exists public.profiles (
   id uuid primary key references auth.users(id) on delete cascade,
   display_name text not null,
@@ -63,3 +65,10 @@ $$;
 drop trigger if exists tasks_set_updated_at on public.tasks;
 create trigger tasks_set_updated_at before update on public.tasks
 for each row execute function public.set_updated_at();
+
+-- Confirm that both required tables were created. This returns two rows when setup
+-- succeeded: public.profiles and public.tasks.
+select schemaname, tablename
+from pg_tables
+where schemaname = 'public' and tablename in ('profiles', 'tasks')
+order by tablename;
