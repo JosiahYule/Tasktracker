@@ -17,17 +17,40 @@ create table if not exists public.tasks (
 
 alter table public.tasks enable row level security;
 
-create policy "Tasktracker users can read tasks"
-on public.tasks for select to anon using (true);
+drop policy if exists "Tasktracker users can read tasks" on public.tasks;
+drop policy if exists "Tasktracker users can create tasks" on public.tasks;
+drop policy if exists "Tasktracker users can update tasks" on public.tasks;
+drop policy if exists "Tasktracker users can delete tasks" on public.tasks;
 
-create policy "Tasktracker users can create tasks"
-on public.tasks for insert to anon with check (true);
+create table if not exists public.profiles (
+  id uuid primary key references auth.users(id) on delete cascade,
+  display_name text not null,
+  role text not null default 'member' check (role in ('member', 'admin')),
+  created_at timestamptz not null default now()
+);
 
-create policy "Tasktracker users can update tasks"
-on public.tasks for update to anon using (true) with check (true);
+alter table public.profiles enable row level security;
 
-create policy "Tasktracker users can delete tasks"
-on public.tasks for delete to anon using (true);
+drop policy if exists "Users can read their own profile" on public.profiles;
+drop policy if exists "Signed-in users can read tasks" on public.tasks;
+drop policy if exists "Signed-in users can create tasks" on public.tasks;
+drop policy if exists "Signed-in users can update tasks" on public.tasks;
+drop policy if exists "Signed-in users can delete tasks" on public.tasks;
+
+create policy "Users can read their own profile"
+on public.profiles for select to authenticated using (id = auth.uid());
+
+create policy "Signed-in users can read tasks"
+on public.tasks for select to authenticated using (true);
+
+create policy "Signed-in users can create tasks"
+on public.tasks for insert to authenticated with check (true);
+
+create policy "Signed-in users can update tasks"
+on public.tasks for update to authenticated using (true) with check (true);
+
+create policy "Signed-in users can delete tasks"
+on public.tasks for delete to authenticated using (true);
 
 create or replace function public.set_updated_at()
 returns trigger language plpgsql as $$

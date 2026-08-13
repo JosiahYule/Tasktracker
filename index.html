@@ -7,9 +7,23 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="styles.css?v=5" />
+    <link rel="stylesheet" href="styles.css?v=7" />
   </head>
   <body>
+    <section class="auth-screen" id="authScreen">
+      <div class="auth-card">
+        <div class="auth-brand">Tasktracker</div>
+        <h1>Welcome back</h1>
+        <p>Sign in to your shared finance workspace.</p>
+        <form id="loginForm">
+          <label>Email<input id="loginEmail" type="email" autocomplete="email" required /></label>
+          <label>Password<input id="loginPassword" type="password" autocomplete="current-password" required /></label>
+          <p class="auth-error" id="authError" role="alert"></p>
+          <button class="primary auth-submit" type="submit">Sign in</button>
+        </form>
+      </div>
+    </section>
+    <div class="app-shell" id="appShell" hidden>
     <aside class="sidebar">
       <div class="brand">Tasktracker</div>
       <nav aria-label="Main navigation">
@@ -24,6 +38,7 @@
         <div><span class="avatar coral">M</span><span>Michaila</span><i>Controller</i></div>
         <div><span class="avatar teal">B</span><span>Brady</span><i>Senior Accountant</i></div>
       </div>
+      <div class="signed-in"><div><strong id="signedInName"></strong><span id="signedInRole"></span></div><button id="signOut">Sign out</button></div>
     </aside>
 
     <main>
@@ -111,6 +126,7 @@
         <div class="actions"><button type="button" data-close-update>Cancel</button><button type="submit" class="primary">Share update</button></div>
       </form>
     </dialog>
-    <script type="module" src="app.js?v=6"></script>
+    <script type="module" src="app.js?v=7"></script>
+    </div>
   </body>
 </html>

@@ -30,9 +30,20 @@ Then visit `http://localhost:4173`.
 The app is configured to use Supabase for shared persistence. Before opening it:
 
 1. Open the Supabase project SQL Editor.
-2. Run `supabase-schema.sql` once to create the table, validation, and row-level security policies.
-3. Start the local server and open the app as described above.
+2. Run `supabase-schema.sql` once to create the tables, validation, and authenticated row-level security policies.
+3. In **Authentication → Users**, create accounts for Michaila, Brady, and the administrator.
+4. Copy each user UUID and create their profile in the SQL Editor:
+
+```sql
+insert into public.profiles (id, display_name, role) values
+  ('MICHAILA_USER_UUID', 'Michaila', 'member'),
+  ('BRADY_USER_UUID', 'Brady', 'member'),
+  ('ADMIN_USER_UUID', 'Your name', 'admin');
+```
+
+5. Start the local server and sign in with one of the accounts.
 
 The browser uses the publishable key in `supabase.js`; no secret or service-role key is
 stored in the frontend. The app refreshes shared data every five seconds so updates made
-in Halifax or Charlottetown appear without a manual reload.
+in Halifax or Charlottetown appear without a manual reload. Only authenticated users with
+a matching profile can open the workspace.

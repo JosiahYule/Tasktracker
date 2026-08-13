@@ -1,4 +1,4 @@
-import { taskStore } from './supabase.js';
+import { auth, taskStore } from './supabase.js';
 
 const starterTasks = [
   { id: 1, name: 'Review bank reconciliation', assignee: 'Michaila', due: '2026-08-13', project: 'Month-end close', recurring: true, frequency: 'monthly', status: 'doing', note: 'Checking the final two reconciling items.', completed: false },
@@ -19,6 +19,25 @@ let taskFilter = 'open';
 const dialog = document.querySelector('#taskDialog');
 const updateDialog = document.querySelector('#updateDialog');
 const recurringDialog = document.querySelector('#recurringDialog');
+const authScreen = document.querySelector('#authScreen');
+const appShell = document.querySelector('#appShell');
+
+async function startApp() {
+  if (!auth.getSession()) return;
+  try {
+    const profile = await auth.profile();
+    document.querySelector('#signedInName').textContent = profile.display_name;
+    document.querySelector('#signedInRole').textContent = profile.role;
+    authScreen.hidden = true;
+    appShell.hidden = false;
+    await loadTasks();
+  } catch (error) {
+    auth.signOut();
+    authScreen.hidden = false;
+    appShell.hidden = true;
+    document.querySelector('#authError').textContent = error.message;
+  }
+}
 
 function fromDatabase(task) {
   return { ...task, recurrenceGenerated: task.recurrence_generated };
@@ -196,7 +215,32 @@ document.querySelector('#updateForm').addEventListener('submit', async event => 
   updateDialog.close(); render(); setSyncStatus('Up to date', 'online');
 });
 
-loadTasks();
+document.querySelector('#loginForm').addEventListener('submit', async event => {
+  event.preventDefault();
+  const error = document.querySelector('#authError');
+  const button = event.submitter;
+  error.textContent = '';
+  button.disabled = true;
+  button.textContent = 'Signing in…';
+  try {
+    await auth.signIn(document.querySelector('#loginEmail').value.trim(), document.querySelector('#loginPassword').value);
+    await startApp();
+    event.target.reset();
+  } catch (loginError) {
+    error.textContent = loginError.message;
+  } finally {
+    button.disabled = false;
+    button.textContent = 'Sign in';
+  }
+});
+document.querySelector('#signOut').addEventListener('click', () => {
+  auth.signOut();
+  tasks = [];
+  appShell.hidden = true;
+  authScreen.hidden = false;
+});
+
+startApp();
 setInterval(() => {
-  if (!document.querySelector('dialog[open]')) loadTasks({ quiet: true });
+  if (auth.getSession() && !document.querySelector('dialog[open]')) loadTasks({ quiet: true });
 }, 5000);
