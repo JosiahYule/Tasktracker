@@ -84,6 +84,15 @@ export const projectStore = {
   async remove(id) { return request(`projects?id=eq.${encodeURIComponent(id)}`, { method: 'DELETE' }); }
 };
 
+export const noteStore = {
+  async list() { return request('notes?select=*&order=created_at.asc'); },
+  async create(note) {
+    const [created] = await request('notes', { method: 'POST', headers: { Prefer: 'return=representation' }, body: JSON.stringify(note) });
+    return created;
+  },
+  async remove(id) { return request(`notes?id=eq.${encodeURIComponent(id)}`, { method: 'DELETE' }); }
+};
+
 export const auth = {
   getSession() { return session; },
 

@@ -106,7 +106,7 @@ main { min-height: 100vh; margin-left: 232px; padding: 38px 48px 64px 34px; max-
 .link, .update { border: 0; padding: 4px; background: transparent; color: #6d62a0; font-size: 11px; font-weight: 600; }
 
 .task-list, .focus-list, .simple-list { border-top: 1px solid var(--line); }
-.task { display: grid; grid-template-columns: auto minmax(160px, 1fr) auto auto auto auto; align-items: center; gap: 12px; min-height: 66px; border-bottom: 1px solid var(--line); padding: 11px 2px; }
+.task { display: grid; grid-template-columns: auto minmax(160px, 1fr) auto auto auto auto auto; align-items: center; gap: 12px; min-height: 66px; border-bottom: 1px solid var(--line); padding: 11px 2px; }
 .complete { width: 20px; height: 20px; padding: 0; border: 1.5px solid #c9cdca; border-radius: 50%; background: #fff; color: #fff; }
 .done .complete { border-color: var(--mint-strong); background: var(--mint-strong); }
 .done .task-copy strong { color: #999d9b; text-decoration: line-through; }
@@ -119,6 +119,8 @@ main { min-height: 100vh; margin-left: 232px; padding: 38px 48px 64px 34px; max-
 .status.waiting { color: #c2775b; }
 .delete { border: 0; padding: 5px; background: transparent; color: #b6bab7; font-size: 17px; }
 .delete:hover { color: #c26f69; }
+.notes-button { border: 0; padding: 5px; background: transparent; color: #716692; font-size: 10px; font-weight: 600; white-space: nowrap; }
+.notes-button span { display: inline-grid; min-width: 16px; height: 16px; place-items: center; margin-left: 3px; border-radius: 50%; background: var(--lavender); font-size: 9px; }
 
 .focus { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: start; gap: 12px; min-height: 92px; border-bottom: 1px solid var(--line); padding: 16px 2px; }
 .focus div { min-width: 0; display: grid; gap: 5px; }
@@ -167,12 +169,24 @@ main { min-height: 100vh; margin-left: 232px; padding: 38px 48px 64px 34px; max-
 .recurring-toolbar h2 { margin: 0 0 6px; font-size: 16px; }
 .recurring-toolbar p, .form-help { margin: 0; color: var(--muted); font-size: 11px; line-height: 1.5; }
 .recurring-board { border-top: 1px solid var(--line); }
-.recurring-item { display: grid; grid-template-columns: 100px minmax(0,1fr) auto auto auto; align-items: center; gap: 18px; min-height: 82px; border-bottom: 1px solid var(--line); padding: 12px 2px; }
+.recurring-item { display: grid; grid-template-columns: 100px minmax(0,1fr) auto auto auto auto; align-items: center; gap: 18px; min-height: 82px; border-bottom: 1px solid var(--line); padding: 12px 2px; }
 .recurring-item.paused { opacity: .55; }
 .recurring-date, .recurring-copy { display: grid; gap: 5px; }
 .recurring-date strong, .recurring-copy strong { font-size: 12px; }
 .recurring-date span, .recurring-copy span { color: #8a8f8c; font-size: 10px; }
 .form-help { margin: -4px 0 18px; padding: 11px 12px; background: #faf9fd; }
+.notes-dialog { width: min(560px,calc(100% - 32px)); }
+.notes-list { max-height: 300px; overflow-y: auto; border-block: 1px solid var(--line); margin: 0 0 20px; }
+.note { position: relative; padding: 15px 2px; border-bottom: 1px solid var(--line); }
+.note:last-child { border-bottom: 0; }
+.note > div { display: flex; align-items: baseline; gap: 8px; }
+.note strong { font-size: 11px; }
+.note time { color: #999d9b; font-size: 9px; }
+.note p { margin: 8px 55px 0 0; color: #555a57; font-size: 11px; line-height: 1.55; white-space: pre-wrap; }
+.delete-note { position: absolute; right: 0; bottom: 14px; border: 0; background: transparent; color: #a36c68; font-size: 9px; }
+.note-entry { position: relative; }
+.note-entry small { position: absolute; right: 8px; bottom: 7px; color: #a0a4a1; font-size: 9px; font-weight: 400; }
+.note-entry textarea { padding-bottom: 25px; }
 
 dialog { width: min(480px, calc(100% - 32px)); border: 0; border-radius: 15px; padding: 0; box-shadow: 0 24px 70px rgb(35 40 37 / 18%); }
 dialog::backdrop { background: rgb(35 40 37 / 28%); backdrop-filter: blur(2px); }

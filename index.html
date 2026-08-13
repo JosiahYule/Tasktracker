@@ -7,7 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="styles.css?v=9" />
+    <link rel="stylesheet" href="styles.css?v=10" />
   </head>
   <body>
     <section class="auth-screen" id="authScreen">
@@ -145,8 +145,17 @@
         <div class="actions"><button type="button" data-close-update>Cancel</button><button type="submit" class="primary">Share update</button></div>
       </form>
     </dialog>
+    <dialog id="notesDialog" class="notes-dialog">
+      <form id="noteForm">
+        <div class="dialog-heading"><div><h2>Notes</h2><p id="notesEntityName"></p></div><button type="button" class="icon" data-close-notes aria-label="Close">×</button></div>
+        <input id="noteEntityType" type="hidden" /><input id="noteEntityId" type="hidden" />
+        <div class="notes-list" id="notesList"></div>
+        <label class="note-entry">Add a note<textarea id="noteBody" required maxlength="1000" placeholder="Share context, a decision, or a handoff..."></textarea><small><span id="noteCount">0</span>/1000</small></label>
+        <div class="actions"><button type="button" data-close-notes>Cancel</button><button type="submit" class="primary">Post note</button></div>
+      </form>
+    </dialog>
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
-    <script type="module" src="app.js?v=9"></script>
+    <script type="module" src="app.js?v=10"></script>
     </div>
   </body>
 </html>

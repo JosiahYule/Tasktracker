@@ -1,6 +1,7 @@
-import { auth, projectStore, taskStore } from './supabase.js';
+import { auth, noteStore, projectStore, taskStore } from './supabase.js';
 
 let projects = [];
+let notes = [];
 let tasks = [];
 let taskFilter = 'open';
 let currentProfile = null;
@@ -9,6 +10,7 @@ const dialog = document.querySelector('#taskDialog');
 const updateDialog = document.querySelector('#updateDialog');
 const recurringDialog = document.querySelector('#recurringDialog');
 const projectDialog = document.querySelector('#projectDialog');
+const notesDialog = document.querySelector('#notesDialog');
 const authScreen = document.querySelector('#authScreen');
 const appShell = document.querySelector('#appShell');
 
@@ -53,9 +55,10 @@ function showToast(message, type = '') {
 async function loadWorkspace({ quiet = false } = {}) {
   try {
     if (!quiet) setSyncStatus('Connecting…');
-    const [taskRecords, projectRecords] = await Promise.all([taskStore.list(), projectStore.list()]);
+    const [taskRecords, projectRecords, noteRecords] = await Promise.all([taskStore.list(), projectStore.list(), noteStore.list()]);
     tasks = taskRecords.map(fromDatabase);
     projects = projectRecords;
+    notes = noteRecords;
     render();
     setSyncStatus('Up to date', 'online');
   } catch (error) {
@@ -94,13 +97,37 @@ function nextDueDate(date, frequency) {
   }
   return next.toISOString().slice(0, 10);
 }
+function noteTotal(type, id) { return notes.filter(note => note.entity_type === type && note.entity_id === Number(id)).length; }
+function notesButton(type, id) {
+  const total = noteTotal(type, id);
+  return `<button class="notes-button" data-notes-type="${type}" data-notes-id="${id}">Notes${total ? ` <span>${total}</span>` : ''}</button>`;
+}
+function noteDate(value) {
+  const date = new Date(value);
+  const today = new Date();
+  const sameDay = date.toDateString() === today.toDateString();
+  return sameDay ? `Today at ${date.toLocaleTimeString('en-CA', { hour: 'numeric', minute: '2-digit' })}` : date.toLocaleString('en-CA', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+}
+function renderNotes(type, id) {
+  const related = notes.filter(note => note.entity_type === type && note.entity_id === Number(id));
+  document.querySelector('#notesList').innerHTML = related.length ? related.map(note => `<article class="note"><div><strong>${safe(note.author_name)}</strong><time>${noteDate(note.created_at)}</time></div><p>${safe(note.body)}</p>${note.author_id === currentProfile.id || currentProfile.role === 'admin' ? `<button type="button" class="delete-note" data-note-id="${note.id}" aria-label="Delete note">Delete</button>` : ''}</article>`).join('') : '<p class="empty">No notes yet. Add the first one below.</p>';
+}
+function openNotes(type, id, name) {
+  document.querySelector('#noteEntityType').value = type;
+  document.querySelector('#noteEntityId').value = id;
+  document.querySelector('#notesEntityName').textContent = name;
+  document.querySelector('#noteBody').value = '';
+  document.querySelector('#noteCount').textContent = '0';
+  renderNotes(type, id);
+  notesDialog.showModal();
+}
 
 function taskMarkup(task) {
   return `<article class="task ${task.completed ? 'done' : ''}" data-id="${task.id}">
     <button class="complete" aria-label="${task.completed ? 'Reopen' : 'Complete'} task">${task.completed ? '✓' : ''}</button>
     <div class="task-copy"><strong>${safe(task.name)}</strong><span>${safe(task.project)} · ${dateLabel(task.due)}${task.recurring ? ' · Recurring' : ''}</span></div>
     <span class="status ${task.status}">${statusLabel(task.status)}</span>${avatar(task.assignee)}
-    <button class="update" aria-label="Share an update">Update</button><button class="delete" aria-label="Delete task">×</button>
+    ${notesButton('task', task.id)}<button class="update" aria-label="Share an update">Update</button><button class="delete" aria-label="Delete task">×</button>
   </article>`;
 }
 
@@ -115,7 +142,7 @@ function projectMarkup(project) {
   const complete = related.filter(task => task.completed).length;
   const progress = related.length ? Math.round(complete / related.length * 100) : 0;
   return `<article class="project-card ${project.color}">
-    <div class="project-copy"><h3>${safe(project.name)}</h3><p>${safe(project.description)}</p><div class="project-meta"><span>${complete} of ${related.length} tasks</span><span>Due ${dateLabel(project.due)}</span></div></div>
+    <div class="project-copy"><h3>${safe(project.name)}</h3><p>${safe(project.description)}</p><div class="project-meta"><span>${complete} of ${related.length} tasks</span><span>Due ${dateLabel(project.due)}</span></div>${notesButton('project', project.id)}</div>
     <div class="progress-ring" style="--progress:${progress}" role="img" aria-label="${progress}% complete"><span>${progress}%</span></div>
   </article>`;
 }
@@ -132,7 +159,7 @@ function render() {
   const recurring = tasks.filter(task => task.recurring && !task.completed);
   const recurringMarkup = recurring.filter(task => !task.paused).map(task => `<article class="simple-item"><div><strong>${safe(task.name)}</strong><span>${safe(task.assignee)} · ${frequencyLabel(task.frequency)} · Due ${dateLabel(task.due)}</span></div></article>`).join('');
   document.querySelector('#overviewRecurring').innerHTML = recurringMarkup || '<p class="empty">Nothing scheduled.</p>';
-  document.querySelector('#recurringList').innerHTML = recurring.length ? recurring.map(task => `<article class="recurring-item ${task.paused ? 'paused' : ''}" data-id="${task.id}"><div class="recurring-date"><strong>${dateLabel(task.due)}</strong><span>${task.paused ? 'Paused' : 'Next due'}</span></div><div class="recurring-copy"><strong>${safe(task.name)}</strong><span>${safe(task.project)} · ${frequencyLabel(task.frequency)}</span></div>${avatar(task.assignee)}<button class="link recurring-toggle">${task.paused ? 'Resume' : 'Pause'}</button><button class="delete" aria-label="Delete recurring task">×</button></article>`).join('') : '<p class="empty">Nothing scheduled.</p>';
+  document.querySelector('#recurringList').innerHTML = recurring.length ? recurring.map(task => `<article class="recurring-item ${task.paused ? 'paused' : ''}" data-id="${task.id}"><div class="recurring-date"><strong>${dateLabel(task.due)}</strong><span>${task.paused ? 'Paused' : 'Next due'}</span></div><div class="recurring-copy"><strong>${safe(task.name)}</strong><span>${safe(task.project)} · ${frequencyLabel(task.frequency)}</span></div>${avatar(task.assignee)}${notesButton('task', task.id)}<button class="link recurring-toggle">${task.paused ? 'Resume' : 'Pause'}</button><button class="delete" aria-label="Delete recurring task">×</button></article>`).join('') : '<p class="empty">Nothing scheduled.</p>';
 
   document.querySelector('#focusList').innerHTML = ['Michaila', 'Brady'].map(name => {
     const current = tasks.find(task => !task.completed && task.assignee === name && task.status === 'doing') || tasks.find(task => !task.completed && task.assignee === name);
@@ -155,6 +182,25 @@ function showView(view) {
 document.addEventListener('click', async event => {
   const nav = event.target.closest('[data-view], [data-go]');
   if (nav) showView(nav.dataset.view || nav.dataset.go);
+  const notesTrigger = event.target.closest('[data-notes-type]');
+  if (notesTrigger) {
+    const type = notesTrigger.dataset.notesType;
+    const id = Number(notesTrigger.dataset.notesId);
+    const entity = type === 'project' ? projects.find(item => item.id === id) : tasks.find(item => item.id === id);
+    openNotes(type, id, entity.name);
+    return;
+  }
+  const deleteNote = event.target.closest('.delete-note');
+  if (deleteNote) {
+    try {
+      await noteStore.remove(Number(deleteNote.dataset.noteId));
+      notes = notes.filter(note => note.id !== Number(deleteNote.dataset.noteId));
+      const type = document.querySelector('#noteEntityType').value;
+      const id = Number(document.querySelector('#noteEntityId').value);
+      renderNotes(type, id); render(); showToast('Note deleted.');
+    } catch (error) { showToast('The note was not deleted.', 'error'); }
+    return;
+  }
   const row = event.target.closest('.task');
   const recurringRow = event.target.closest('.recurring-item');
   if (recurringRow) {
@@ -197,6 +243,7 @@ document.querySelector('#openRecurringForm').addEventListener('click', () => rec
 document.querySelectorAll('[data-close-recurring]').forEach(button => button.addEventListener('click', () => recurringDialog.close()));
 document.querySelector('#openProjectForm').addEventListener('click', () => projectDialog.showModal());
 document.querySelectorAll('[data-close-project]').forEach(button => button.addEventListener('click', () => projectDialog.close()));
+document.querySelectorAll('[data-close-notes]').forEach(button => button.addEventListener('click', () => notesDialog.close()));
 document.querySelectorAll('[data-close-update]').forEach(button => button.addEventListener('click', () => updateDialog.close()));
 document.querySelector('#taskForm').addEventListener('submit', async event => {
   event.preventDefault();
@@ -222,6 +269,20 @@ document.querySelector('#projectForm').addEventListener('submit', async event =>
     console.error(error); setSyncStatus('Unable to save', 'error');
     showToast(error.message.includes('duplicate') ? 'A project with that name already exists.' : 'The project was not created. Please try again.', 'error');
   }
+});
+document.querySelector('#noteBody').addEventListener('input', event => { document.querySelector('#noteCount').textContent = event.target.value.length; });
+document.querySelector('#noteForm').addEventListener('submit', async event => {
+  event.preventDefault();
+  const button = event.submitter;
+  button.disabled = true;
+  try {
+    const note = await noteStore.create({ entity_type: document.querySelector('#noteEntityType').value, entity_id: Number(document.querySelector('#noteEntityId').value), body: document.querySelector('#noteBody').value.trim(), author_id: currentProfile.id, author_name: currentProfile.display_name });
+    notes.push(note);
+    document.querySelector('#noteBody').value = '';
+    document.querySelector('#noteCount').textContent = '0';
+    renderNotes(note.entity_type, note.entity_id); render(); showToast('Note posted.');
+  } catch (error) { console.error(error); showToast('The note was not posted.', 'error'); }
+  finally { button.disabled = false; }
 });
 document.querySelector('#updateForm').addEventListener('submit', async event => {
   event.preventDefault();
@@ -252,6 +313,8 @@ document.querySelector('#loginForm').addEventListener('submit', async event => {
 document.querySelector('#signOut').addEventListener('click', () => {
   auth.signOut();
   tasks = [];
+  projects = [];
+  notes = [];
   currentProfile = null;
   appShell.hidden = true;
   authScreen.hidden = false;
