@@ -7,7 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="styles.css?v=4" />
+    <link rel="stylesheet" href="styles.css?v=5" />
   </head>
   <body>
     <aside class="sidebar">
@@ -22,7 +22,7 @@
       <div class="people">
         <p>TEAM</p>
         <div><span class="avatar coral">M</span><span>Michaila</span><i>Controller</i></div>
-        <div><span class="avatar teal">B</span><span>Brady</span><i>Assistant Controller</i></div>
+        <div><span class="avatar teal">B</span><span>Brady</span><i>Senior Accountant</i></div>
       </div>
     </aside>
 
@@ -66,7 +66,11 @@
       </section>
 
       <section class="view" id="recurringView">
-        <div class="card simple-list recurring-list" id="recurringList"></div>
+        <div class="recurring-toolbar">
+          <div><h2>Schedule</h2><p>Complete an occurrence and the next one is created automatically.</p></div>
+          <button class="secondary" id="openRecurringForm">Add recurring task</button>
+        </div>
+        <div class="recurring-board" id="recurringList"></div>
       </section>
 
       <section class="view" id="teamView">
@@ -88,6 +92,16 @@
         <div class="actions"><button type="button" id="cancelForm">Cancel</button><button type="submit" class="primary">Add task</button></div>
       </form>
     </dialog>
+    <dialog id="recurringDialog">
+      <form id="recurringForm">
+        <div class="dialog-heading"><h2>Add recurring task</h2><button type="button" class="icon" data-close-recurring aria-label="Close">×</button></div>
+        <label>Task<input id="recurringName" required placeholder="e.g. Reconcile operating account" /></label>
+        <div class="field-row"><label>Assigned to<select id="recurringAssignee"><option>Michaila</option><option>Brady</option></select></label><label>Project<select id="recurringProject"><option>Month-end close</option><option>FY26 planning</option><option>Systems review</option><option>General</option></select></label></div>
+        <div class="field-row"><label>Repeats<select id="frequency"><option value="weekly">Weekly</option><option value="monthly" selected>Monthly</option><option value="quarterly">Quarterly</option><option value="yearly">Yearly</option></select></label><label>First due date<input id="recurringDueDate" type="date" required /></label></div>
+        <p class="form-help">The next due date will be scheduled only after this occurrence is completed.</p>
+        <div class="actions"><button type="button" data-close-recurring>Cancel</button><button type="submit" class="primary">Add to schedule</button></div>
+      </form>
+    </dialog>
     <dialog id="updateDialog">
       <form id="updateForm">
         <div class="dialog-heading"><div><h2>Share an update</h2><p id="updateTaskName"></p></div><button type="button" class="icon" data-close-update aria-label="Close">×</button></div>
@@ -97,6 +111,6 @@
         <div class="actions"><button type="button" data-close-update>Cancel</button><button type="submit" class="primary">Share update</button></div>
       </form>
     </dialog>
-    <script src="app.js?v=4"></script>
+    <script src="app.js?v=5"></script>
   </body>
 </html>

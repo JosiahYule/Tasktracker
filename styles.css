@@ -112,15 +112,26 @@ main { min-height: 100vh; margin-left: 232px; padding: 38px 48px 64px 34px; max-
 .simple-item div { display: grid; gap: 5px; }
 .simple-item strong { font-size: 12px; }
 .simple-item div span, .simple-item > span { color: #8c918e; font-size: 10px; }
-.toolbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 22px; }
+.toolbar { display: flex; align-items: center; justify-content: space-between; gap: 28px; margin-bottom: 22px; }
 .filters { display: flex; gap: 20px; }
 .filter { border: 0; border-bottom: 2px solid transparent; padding: 7px 0; background: transparent; color: #858a87; }
 .filter.active { border-color: var(--lavender-strong); color: var(--ink); font-weight: 600; }
-.toolbar select { height: 38px; border: 1px solid var(--line); border-radius: 8px; padding: 0 12px; background: #fff; }
+.toolbar select { width: 190px; height: 38px; border: 1px solid var(--line); border-radius: 8px; padding: 0 12px; background: #fff; }
 .team-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 32px; }
 .team-heading { display: flex; align-items: center; gap: 11px; margin-bottom: 14px; }
 .office-note { margin-bottom: 26px; color: var(--muted); font-size: 12px; }
 .empty { padding: 40px 0; color: #959a97; text-align: center; }
+.secondary { border: 1px solid #dfd9f1; border-radius: 9px; padding: 10px 14px; background: var(--lavender); color: #51466f; font-weight: 600; }
+.recurring-toolbar { display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; margin-bottom: 24px; }
+.recurring-toolbar h2 { margin: 0 0 6px; font-size: 16px; }
+.recurring-toolbar p, .form-help { margin: 0; color: var(--muted); font-size: 11px; line-height: 1.5; }
+.recurring-board { border-top: 1px solid var(--line); }
+.recurring-item { display: grid; grid-template-columns: 100px minmax(0,1fr) auto auto auto; align-items: center; gap: 18px; min-height: 82px; border-bottom: 1px solid var(--line); padding: 12px 2px; }
+.recurring-item.paused { opacity: .55; }
+.recurring-date, .recurring-copy { display: grid; gap: 5px; }
+.recurring-date strong, .recurring-copy strong { font-size: 12px; }
+.recurring-date span, .recurring-copy span { color: #8a8f8c; font-size: 10px; }
+.form-help { margin: -4px 0 18px; padding: 11px 12px; background: #faf9fd; }
 
 dialog { width: min(480px, calc(100% - 32px)); border: 0; border-radius: 15px; padding: 0; box-shadow: 0 24px 70px rgb(35 40 37 / 18%); }
 dialog::backdrop { background: rgb(35 40 37 / 28%); backdrop-filter: blur(2px); }
@@ -169,4 +180,10 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   .task .update { grid-column: 2; grid-row: 3; justify-self: start; padding-left: 0; }
   .task .delete { grid-column: 3; grid-row: 3; }
   .field-row { grid-template-columns: 1fr; gap: 0; }
+  .toolbar { align-items: flex-start; }
+  .toolbar select { width: 132px; }
+  .recurring-toolbar { align-items: flex-start; }
+  .recurring-item { grid-template-columns: 1fr auto auto; gap: 10px; }
+  .recurring-date { grid-column: 1; }
+  .recurring-copy { grid-column: 1; }
 }
