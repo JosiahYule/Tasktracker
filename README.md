@@ -1,6 +1,6 @@
 # Tasktracker
 
-A small, shared to-do list for Michaila and Brady.
+A focused coordination workspace for Michaila and Brady.
 
 ## Run locally
 
@@ -14,8 +14,11 @@ Then visit `http://localhost:4173`.
 
 ## Features
 
-- Open, completed, and all-task views
-- Task creation with an assignee, due date, and recurring marker
+- Overview of open work and current team focus
+- Individual to-do list with open, completed, and assignee filters
+- Project progress and recurring task sections
+- Team view showing what each person is working on
+- Task creation with an assignee, due date, project, and recurring marker
 - One-click task completion and reopening
 - Task deletion
 - Browser-local persistence for newly created and updated tasks
