@@ -1,6 +1,6 @@
-# Northstar Task Tracker
+# Tasktracker
 
-A responsive, lightweight coordination workspace for finance teams. Northstar gives controllers and assistant controllers a shared view of daily work, project progress, recurring tasks, assignments, and recent activity.
+A small, shared to-do list for Michaila and Brady.
 
 ## Run locally
 
@@ -14,9 +14,9 @@ Then visit `http://localhost:4173`.
 
 ## Features
 
-- Daily, upcoming, and completed task views
-- Task creation with assignment, due date, project, and recurrence
+- Open, completed, and all-task views
+- Task creation with an assignee, due date, and recurring marker
 - One-click task completion and reopening
-- Project progress and recent team activity at a glance
+- Task deletion
 - Browser-local persistence for newly created and updated tasks
-- Responsive desktop and mobile navigation
+- Responsive desktop and mobile layout
