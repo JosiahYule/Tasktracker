@@ -56,6 +56,10 @@ button { cursor: pointer; }
 
 main { min-height: 100vh; margin-left: 232px; padding: 38px 48px 64px 34px; max-width: 1500px; }
 .topbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 34px; }
+.header-actions { display: flex; align-items: center; gap: 14px; }
+.sync-status { color: #858a87; font-size: 10px; }
+.sync-status.online { color: #4d8973; }
+.sync-status.error { color: #c2775b; }
 .topbar h1 { margin: 0 0 6px; font-size: 28px; letter-spacing: -.8px; }
 .topbar p, .card-heading p { margin: 0; color: var(--muted); }
 .primary { border: 0; border-radius: 9px; padding: 11px 17px; background: #252827; color: #fff; font-weight: 600; }

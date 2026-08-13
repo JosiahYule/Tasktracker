@@ -29,7 +29,7 @@
     <main>
       <header class="topbar">
         <div><h1 id="pageTitle">Overview</h1><p id="pageSubtitle">Today’s work, in one place.</p></div>
-        <button class="primary" id="openForm">Add task</button>
+        <div class="header-actions"><span class="sync-status" id="syncStatus">Connecting…</span><button class="primary" id="openForm">Add task</button></div>
       </header>
 
       <section class="view active" id="overviewView">
@@ -111,6 +111,6 @@
         <div class="actions"><button type="button" data-close-update>Cancel</button><button type="submit" class="primary">Share update</button></div>
       </form>
     </dialog>
-    <script src="app.js?v=5"></script>
+    <script type="module" src="app.js?v=6"></script>
   </body>
 </html>

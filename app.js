@@ -1,3 +1,5 @@
+import { taskStore } from './supabase.js';
+
 const starterTasks = [
   { id: 1, name: 'Review bank reconciliation', assignee: 'Michaila', due: '2026-08-13', project: 'Month-end close', recurring: true, frequency: 'monthly', status: 'doing', note: 'Checking the final two reconciling items.', completed: false },
   { id: 2, name: 'Approve payroll journal', assignee: 'Michaila', due: '2026-08-13', project: 'Month-end close', recurring: false, status: 'todo', note: '', completed: false },
@@ -12,22 +14,57 @@ const projects = [
   { name: 'FY26 planning', description: 'Build next year’s operating plan', due: 'Sep 5', color: 'blue' },
   { name: 'Systems review', description: 'Review access and finance workflows', due: 'Sep 28', color: 'teal' }
 ];
-const storageKey = 'tasktracker-tasks-v3';
-
-let tasks = loadTasks();
+let tasks = [];
 let taskFilter = 'open';
 const dialog = document.querySelector('#taskDialog');
 const updateDialog = document.querySelector('#updateDialog');
 const recurringDialog = document.querySelector('#recurringDialog');
 
-function loadTasks() {
-  try {
-    const saved = JSON.parse(localStorage.getItem(storageKey));
-    return saved ? saved.map(task => ({ project: 'General', recurring: false, frequency: 'monthly', paused: false, recurrenceGenerated: false, status: 'todo', note: '', ...task })) : starterTasks;
-  }
-  catch { return starterTasks; }
+function fromDatabase(task) {
+  return { ...task, recurrenceGenerated: task.recurrence_generated };
 }
-function saveTasks() { localStorage.setItem(storageKey, JSON.stringify(tasks)); }
+function toDatabase(task) {
+  const { recurrenceGenerated, created_at, updated_at, ...record } = task;
+  return { ...record, recurrence_generated: recurrenceGenerated || false };
+}
+function setSyncStatus(message, state = '') {
+  const indicator = document.querySelector('#syncStatus');
+  indicator.textContent = message;
+  indicator.className = `sync-status ${state}`;
+}
+async function loadTasks({ quiet = false } = {}) {
+  try {
+    if (!quiet) setSyncStatus('Connecting…');
+    const records = await taskStore.list();
+    if (!records.length) {
+      tasks = await Promise.all(starterTasks.map(task => {
+        const { id, ...seed } = task;
+        return taskStore.create(toDatabase(seed));
+      }));
+    } else {
+      tasks = records;
+    }
+    tasks = tasks.map(fromDatabase);
+    render();
+    setSyncStatus('Up to date', 'online');
+  } catch (error) {
+    console.error(error);
+    setSyncStatus('Unable to sync', 'error');
+  }
+}
+async function createTask(task) {
+  const { id, ...newTask } = task;
+  const created = fromDatabase(await taskStore.create(toDatabase(newTask)));
+  tasks.push(created);
+}
+async function updateTask(task, changes) {
+  const updated = fromDatabase(await taskStore.update(task.id, toDatabase({ ...task, ...changes })));
+  Object.assign(task, updated);
+}
+async function deleteTask(task) {
+  await taskStore.remove(task.id);
+  tasks = tasks.filter(item => item !== task);
+}
 function safe(value) { const node = document.createElement('span'); node.textContent = value; return node.innerHTML; }
 function dateLabel(date) { return date ? new Date(`${date}T12:00:00`).toLocaleDateString('en-CA', { month: 'short', day: 'numeric' }) : 'No due date'; }
 function avatar(name) { return `<span class="avatar ${name === 'Michaila' ? 'coral' : 'teal'}">${name[0]}</span>`; }
@@ -95,27 +132,31 @@ function showView(view) {
   document.querySelector('#pageSubtitle').textContent = titles[view][1];
 }
 
-document.addEventListener('click', event => {
+document.addEventListener('click', async event => {
   const nav = event.target.closest('[data-view], [data-go]');
   if (nav) showView(nav.dataset.view || nav.dataset.go);
   const row = event.target.closest('.task');
   const recurringRow = event.target.closest('.recurring-item');
   if (recurringRow) {
     const recurringTask = tasks.find(item => item.id === Number(recurringRow.dataset.id));
-    if (event.target.closest('.recurring-toggle')) recurringTask.paused = !recurringTask.paused;
-    if (event.target.closest('.delete')) tasks = tasks.filter(item => item !== recurringTask);
-    saveTasks(); render(); return;
+    setSyncStatus('Saving…');
+    if (event.target.closest('.recurring-toggle')) await updateTask(recurringTask, { paused: !recurringTask.paused });
+    if (event.target.closest('.delete')) await deleteTask(recurringTask);
+    render(); setSyncStatus('Up to date', 'online'); return;
   }
   if (!row) return;
   const task = tasks.find(item => item.id === Number(row.dataset.id));
   if (event.target.closest('.complete')) {
-    task.completed = !task.completed;
-    if (task.completed && task.recurring && !task.recurrenceGenerated) {
-      task.recurrenceGenerated = true;
-      tasks.push({ ...task, id: Date.now(), due: nextDueDate(task.due, task.frequency), paused: false, recurrenceGenerated: false, status: 'todo', note: '', completed: false });
+    setSyncStatus('Saving…');
+    const completed = !task.completed;
+    const shouldGenerate = completed && task.recurring && !task.recurrenceGenerated;
+    await updateTask(task, { completed, recurrenceGenerated: shouldGenerate ? true : task.recurrenceGenerated });
+    if (shouldGenerate) {
+      const { id, ...nextTask } = task;
+      await createTask({ ...nextTask, due: nextDueDate(task.due, task.frequency), paused: false, recurrenceGenerated: false, status: 'todo', note: '', completed: false });
     }
   }
-  if (event.target.closest('.delete')) tasks = tasks.filter(item => item !== task);
+  if (event.target.closest('.delete')) await deleteTask(task);
   if (event.target.closest('.update')) {
     document.querySelector('#updateTaskId').value = task.id;
     document.querySelector('#updateTaskName').textContent = task.name;
@@ -124,7 +165,7 @@ document.addEventListener('click', event => {
     updateDialog.showModal();
     return;
   }
-  saveTasks(); render();
+  render(); setSyncStatus('Up to date', 'online');
 });
 
 document.querySelectorAll('.filter').forEach(button => button.addEventListener('click', () => { taskFilter = button.dataset.filter; document.querySelector('.filter.active').classList.remove('active'); button.classList.add('active'); renderTasks(); }));
@@ -135,22 +176,27 @@ document.querySelector('#cancelForm').addEventListener('click', () => dialog.clo
 document.querySelector('#openRecurringForm').addEventListener('click', () => recurringDialog.showModal());
 document.querySelectorAll('[data-close-recurring]').forEach(button => button.addEventListener('click', () => recurringDialog.close()));
 document.querySelectorAll('[data-close-update]').forEach(button => button.addEventListener('click', () => updateDialog.close()));
-document.querySelector('#taskForm').addEventListener('submit', event => {
+document.querySelector('#taskForm').addEventListener('submit', async event => {
   event.preventDefault();
-  tasks.push({ id: Date.now(), name: document.querySelector('#taskName').value.trim(), assignee: document.querySelector('#assignee').value, due: document.querySelector('#dueDate').value, project: document.querySelector('#project').value, recurring: document.querySelector('#recurring').checked, status: document.querySelector('#status').value, note: '', completed: false });
-  saveTasks(); event.target.reset(); dialog.close(); render();
+  setSyncStatus('Saving…');
+  await createTask({ name: document.querySelector('#taskName').value.trim(), assignee: document.querySelector('#assignee').value, due: document.querySelector('#dueDate').value || null, project: document.querySelector('#project').value, recurring: document.querySelector('#recurring').checked, frequency: 'monthly', paused: false, recurrenceGenerated: false, status: document.querySelector('#status').value, note: '', completed: false });
+  event.target.reset(); dialog.close(); render(); setSyncStatus('Up to date', 'online');
 });
-document.querySelector('#recurringForm').addEventListener('submit', event => {
+document.querySelector('#recurringForm').addEventListener('submit', async event => {
   event.preventDefault();
-  tasks.push({ id: Date.now(), name: document.querySelector('#recurringName').value.trim(), assignee: document.querySelector('#recurringAssignee').value, due: document.querySelector('#recurringDueDate').value, project: document.querySelector('#recurringProject').value, recurring: true, frequency: document.querySelector('#frequency').value, paused: false, recurrenceGenerated: false, status: 'todo', note: '', completed: false });
-  saveTasks(); event.target.reset(); recurringDialog.close(); render();
+  setSyncStatus('Saving…');
+  await createTask({ name: document.querySelector('#recurringName').value.trim(), assignee: document.querySelector('#recurringAssignee').value, due: document.querySelector('#recurringDueDate').value, project: document.querySelector('#recurringProject').value, recurring: true, frequency: document.querySelector('#frequency').value, paused: false, recurrenceGenerated: false, status: 'todo', note: '', completed: false });
+  event.target.reset(); recurringDialog.close(); render(); setSyncStatus('Up to date', 'online');
 });
-document.querySelector('#updateForm').addEventListener('submit', event => {
+document.querySelector('#updateForm').addEventListener('submit', async event => {
   event.preventDefault();
   const task = tasks.find(item => item.id === Number(document.querySelector('#updateTaskId').value));
-  task.status = document.querySelector('#updateStatus').value;
-  task.note = document.querySelector('#updateNote').value.trim();
-  saveTasks(); updateDialog.close(); render();
+  setSyncStatus('Saving…');
+  await updateTask(task, { status: document.querySelector('#updateStatus').value, note: document.querySelector('#updateNote').value.trim() });
+  updateDialog.close(); render(); setSyncStatus('Up to date', 'online');
 });
 
-render();
+loadTasks();
+setInterval(() => {
+  if (!document.querySelector('dialog[open]')) loadTasks({ quiet: true });
+}, 5000);
