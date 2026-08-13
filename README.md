@@ -18,8 +18,15 @@ Then visit `http://localhost:4173`.
 - Individual to-do list with open, completed, and assignee filters
 - Project progress and recurring task sections
 - Team view showing what each person is working on
+- Lightweight status updates and notes for cross-office handoffs
 - Task creation with an assignee, due date, project, and recurring marker
 - One-click task completion and reopening
 - Task deletion
 - Browser-local persistence for newly created and updated tasks
 - Responsive desktop and mobile layout
+
+## Database integration
+
+The interface currently uses `localStorage`. Task reads and writes are isolated in
+`loadTasks()` and `saveTasks()` so they can be replaced with Supabase queries without
+changing the interface.

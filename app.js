@@ -1,10 +1,10 @@
 const starterTasks = [
-  { id: 1, name: 'Review bank reconciliation', assignee: 'Michaila', due: '2026-08-13', project: 'Month-end close', recurring: true, completed: false },
-  { id: 2, name: 'Approve payroll journal', assignee: 'Michaila', due: '2026-08-13', project: 'Month-end close', recurring: false, completed: false },
-  { id: 3, name: 'Update monthly reporting package', assignee: 'Brady', due: '2026-08-14', project: 'Month-end close', recurring: true, completed: false },
-  { id: 4, name: 'Prepare budget assumptions', assignee: 'Michaila', due: '2026-08-18', project: 'FY26 planning', recurring: false, completed: false },
-  { id: 5, name: 'Review software access list', assignee: 'Brady', due: '2026-08-20', project: 'Systems review', recurring: false, completed: false },
-  { id: 6, name: 'Post recurring accruals', assignee: 'Brady', due: '2026-08-13', project: 'Month-end close', recurring: true, completed: true }
+  { id: 1, name: 'Review bank reconciliation', assignee: 'Michaila', due: '2026-08-13', project: 'Month-end close', recurring: true, status: 'doing', note: 'Checking the final two reconciling items.', completed: false },
+  { id: 2, name: 'Approve payroll journal', assignee: 'Michaila', due: '2026-08-13', project: 'Month-end close', recurring: false, status: 'todo', note: '', completed: false },
+  { id: 3, name: 'Update monthly reporting package', assignee: 'Brady', due: '2026-08-14', project: 'Month-end close', recurring: true, status: 'doing', note: 'Income statement is ready; cash flow is next.', completed: false },
+  { id: 4, name: 'Prepare budget assumptions', assignee: 'Michaila', due: '2026-08-18', project: 'FY26 planning', recurring: false, status: 'waiting', note: 'Waiting for Greg’s headcount figures.', completed: false },
+  { id: 5, name: 'Review software access list', assignee: 'Brady', due: '2026-08-20', project: 'Systems review', recurring: false, status: 'todo', note: '', completed: false },
+  { id: 6, name: 'Post recurring accruals', assignee: 'Brady', due: '2026-08-13', project: 'Month-end close', recurring: true, status: 'todo', note: '', completed: true }
 ];
 
 const projects = [
@@ -12,16 +12,17 @@ const projects = [
   { name: 'FY26 planning', description: 'Build next year’s operating plan', due: 'Sep 5', color: 'blue' },
   { name: 'Systems review', description: 'Review access and finance workflows', due: 'Sep 28', color: 'teal' }
 ];
-const storageKey = 'tasktracker-tasks-v2';
+const storageKey = 'tasktracker-tasks-v3';
 
 let tasks = loadTasks();
 let taskFilter = 'open';
 const dialog = document.querySelector('#taskDialog');
+const updateDialog = document.querySelector('#updateDialog');
 
 function loadTasks() {
   try {
     const saved = JSON.parse(localStorage.getItem(storageKey));
-    return saved ? saved.map(task => ({ project: 'General', recurring: false, ...task })) : starterTasks;
+    return saved ? saved.map(task => ({ project: 'General', recurring: false, status: 'todo', note: '', ...task })) : starterTasks;
   }
   catch { return starterTasks; }
 }
@@ -29,12 +30,14 @@ function saveTasks() { localStorage.setItem(storageKey, JSON.stringify(tasks)); 
 function safe(value) { const node = document.createElement('span'); node.textContent = value; return node.innerHTML; }
 function dateLabel(date) { return date ? new Date(`${date}T12:00:00`).toLocaleDateString('en-CA', { month: 'short', day: 'numeric' }) : 'No due date'; }
 function avatar(name) { return `<span class="avatar ${name === 'Michaila' ? 'coral' : 'teal'}">${name[0]}</span>`; }
+function statusLabel(status) { return { todo: 'To do', doing: 'In progress', waiting: 'Waiting' }[status] || 'To do'; }
 
 function taskMarkup(task) {
   return `<article class="task ${task.completed ? 'done' : ''}" data-id="${task.id}">
     <button class="complete" aria-label="${task.completed ? 'Reopen' : 'Complete'} task">${task.completed ? '✓' : ''}</button>
-    <div class="task-copy"><strong>${safe(task.name)}</strong><span>${safe(task.project)} · ${dateLabel(task.due)}${task.recurring ? ' · ↻ Recurring' : ''}</span></div>
-    ${avatar(task.assignee)}<button class="delete" aria-label="Delete task">×</button>
+    <div class="task-copy"><strong>${safe(task.name)}</strong><span>${safe(task.project)} · ${dateLabel(task.due)}${task.recurring ? ' · Recurring' : ''}</span></div>
+    <span class="status ${task.status}">${statusLabel(task.status)}</span>${avatar(task.assignee)}
+    <button class="update" aria-label="Share an update">Update</button><button class="delete" aria-label="Delete task">×</button>
   </article>`;
 }
 
@@ -54,9 +57,11 @@ function projectMarkup(project) {
 function render() {
   const weekFromNow = new Date();
   weekFromNow.setDate(weekFromNow.getDate() + 7);
+  const today = new Date().toISOString().slice(0, 10);
   const weekEnd = weekFromNow.toISOString().slice(0, 10);
   document.querySelector('#openTotal').textContent = tasks.filter(task => !task.completed).length;
-  document.querySelector('#weekTotal').textContent = tasks.filter(task => !task.completed && task.due && task.due <= weekEnd).length;
+  document.querySelector('#weekTotal').textContent = tasks.filter(task => !task.completed && task.due >= today && task.due <= weekEnd).length;
+  document.querySelector('#waitingTotal').textContent = tasks.filter(task => !task.completed && task.status === 'waiting').length;
   document.querySelector('#overviewTasks').innerHTML = tasks.filter(task => !task.completed && task.assignee === 'Michaila').slice(0, 4).map(taskMarkup).join('');
   document.querySelector('#overviewProjects').innerHTML = projects.map(projectMarkup).join('');
   document.querySelector('#projectList').innerHTML = projects.map(projectMarkup).join('');
@@ -67,8 +72,8 @@ function render() {
   document.querySelector('#recurringList').innerHTML = recurringMarkup;
 
   document.querySelector('#focusList').innerHTML = ['Michaila', 'Brady'].map(name => {
-    const current = tasks.find(task => !task.completed && task.assignee === name);
-    return `<article class="focus">${avatar(name)}<div><strong>${name}</strong><span>${current ? safe(current.name) : 'No open tasks'}</span></div><i>${tasks.filter(task => !task.completed && task.assignee === name).length} open</i></article>`;
+    const current = tasks.find(task => !task.completed && task.assignee === name && task.status === 'doing') || tasks.find(task => !task.completed && task.assignee === name);
+    return `<article class="focus">${avatar(name)}<div><strong>${name}<small>${name === 'Michaila' ? 'Halifax' : 'Charlottetown'}</small></strong><span>${current ? safe(current.name) : 'Nothing assigned'}</span>${current?.note ? `<p>${safe(current.note)}</p>` : ''}</div><i>${current ? statusLabel(current.status) : 'Clear'}</i></article>`;
   }).join('');
 
   document.querySelector('#teamList').innerHTML = ['Michaila', 'Brady'].map(name => `<section class="card team-card"><div class="team-heading">${avatar(name)}<div><h2>${name}</h2><p>${name === 'Michaila' ? 'Controller' : 'Assistant Controller'}</p></div></div>${tasks.filter(task => !task.completed && task.assignee === name).map(taskMarkup).join('') || '<p class="empty">No open tasks.</p>'}</section>`).join('');
@@ -76,7 +81,7 @@ function render() {
 }
 
 function showView(view) {
-  const titles = { overview: ['Overview', 'A clear view of the team’s work.'], tasks: ['To-do list', 'All individual tasks in one place.'], projects: ['Projects', 'Track shared work and progress.'], recurring: ['Recurring tasks', 'Tasks that happen on a regular schedule.'], team: ['Team activity', 'See what Michaila and Brady are working on.'] };
+  const titles = { overview: ['Overview', 'Today’s work, in one place.'], tasks: ['To-do list', 'Assign, update, and complete tasks.'], projects: ['Projects', 'Shared work and progress.'], recurring: ['Recurring tasks', 'Routine work and its next due date.'], team: ['Team', 'What Michaila and Brady are working on.'] };
   document.querySelectorAll('.view').forEach(section => section.classList.remove('active'));
   document.querySelector(`#${view}View`).classList.add('active');
   document.querySelectorAll('.nav-item').forEach(button => button.classList.toggle('active', button.dataset.view === view));
@@ -92,6 +97,14 @@ document.addEventListener('click', event => {
   const task = tasks.find(item => item.id === Number(row.dataset.id));
   if (event.target.closest('.complete')) task.completed = !task.completed;
   if (event.target.closest('.delete')) tasks = tasks.filter(item => item !== task);
+  if (event.target.closest('.update')) {
+    document.querySelector('#updateTaskId').value = task.id;
+    document.querySelector('#updateTaskName').textContent = task.name;
+    document.querySelector('#updateStatus').value = task.status;
+    document.querySelector('#updateNote').value = task.note;
+    updateDialog.showModal();
+    return;
+  }
   saveTasks(); render();
 });
 
@@ -100,10 +113,18 @@ document.querySelector('#personFilter').addEventListener('change', renderTasks);
 document.querySelector('#openForm').addEventListener('click', () => dialog.showModal());
 document.querySelector('#closeForm').addEventListener('click', () => dialog.close());
 document.querySelector('#cancelForm').addEventListener('click', () => dialog.close());
+document.querySelectorAll('[data-close-update]').forEach(button => button.addEventListener('click', () => updateDialog.close()));
 document.querySelector('#taskForm').addEventListener('submit', event => {
   event.preventDefault();
-  tasks.push({ id: Date.now(), name: document.querySelector('#taskName').value.trim(), assignee: document.querySelector('#assignee').value, due: document.querySelector('#dueDate').value, project: document.querySelector('#project').value, recurring: document.querySelector('#recurring').checked, completed: false });
+  tasks.push({ id: Date.now(), name: document.querySelector('#taskName').value.trim(), assignee: document.querySelector('#assignee').value, due: document.querySelector('#dueDate').value, project: document.querySelector('#project').value, recurring: document.querySelector('#recurring').checked, status: document.querySelector('#status').value, note: '', completed: false });
   saveTasks(); event.target.reset(); dialog.close(); render();
+});
+document.querySelector('#updateForm').addEventListener('submit', event => {
+  event.preventDefault();
+  const task = tasks.find(item => item.id === Number(document.querySelector('#updateTaskId').value));
+  task.status = document.querySelector('#updateStatus').value;
+  task.note = document.querySelector('#updateNote').value.trim();
+  saveTasks(); updateDialog.close(); render();
 });
 
 render();
