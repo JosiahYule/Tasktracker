@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Tasktracker</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main>
+      <header>
+        <div>
+          <h1>Tasktracker</h1>
+          <p>Shared tasks for Michaila and Brady</p>
+        </div>
+        <button class="primary" id="openForm">Add task</button>
+      </header>
+
+      <nav class="filters" aria-label="Filter tasks">
+        <button class="filter active" data-filter="open">Open <span id="openCount">0</span></button>
+        <button class="filter" data-filter="completed">Completed</button>
+        <button class="filter" data-filter="all">All</button>
+      </nav>
+
+      <section class="task-list" id="taskList" aria-live="polite"></section>
+    </main>
+
+    <dialog id="taskDialog">
+      <form id="taskForm">
+        <div class="dialog-heading">
+          <h2>Add a task</h2>
+          <button type="button" class="icon" id="closeForm" aria-label="Close">×</button>
+        </div>
+
+        <label>
+          Task
+          <input id="taskName" required autofocus placeholder="What needs to be done?" />
+        </label>
+
+        <div class="field-row">
+          <label>
+            Assigned to
+            <select id="assignee">
+              <option>Michaila</option>
+              <option>Brady</option>
+            </select>
+          </label>
+          <label>
+            Due date
+            <input id="dueDate" type="date" />
+          </label>
+        </div>
+
+        <label class="check-label">
+          <input id="recurring" type="checkbox" />
+          Recurring task
+        </label>
+
+        <div class="actions">
+          <button type="button" id="cancelForm">Cancel</button>
+          <button type="submit" class="primary">Add task</button>
+        </div>
+      </form>
+    </dialog>
+
+    <script src="app.js"></script>
+  </body>
+</html>
