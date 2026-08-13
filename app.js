@@ -12,6 +12,7 @@ const projects = [
   { name: 'FY26 planning', description: 'Build next year’s operating plan', due: 'Sep 5', color: 'blue' },
   { name: 'Systems review', description: 'Review access and finance workflows', due: 'Sep 28', color: 'teal' }
 ];
+const storageKey = 'tasktracker-tasks-v2';
 
 let tasks = loadTasks();
 let taskFilter = 'open';
@@ -19,12 +20,12 @@ const dialog = document.querySelector('#taskDialog');
 
 function loadTasks() {
   try {
-    const saved = JSON.parse(localStorage.getItem('tasktracker-tasks'));
+    const saved = JSON.parse(localStorage.getItem(storageKey));
     return saved ? saved.map(task => ({ project: 'General', recurring: false, ...task })) : starterTasks;
   }
   catch { return starterTasks; }
 }
-function saveTasks() { localStorage.setItem('tasktracker-tasks', JSON.stringify(tasks)); }
+function saveTasks() { localStorage.setItem(storageKey, JSON.stringify(tasks)); }
 function safe(value) { const node = document.createElement('span'); node.textContent = value; return node.innerHTML; }
 function dateLabel(date) { return date ? new Date(`${date}T12:00:00`).toLocaleDateString('en-CA', { month: 'short', day: 'numeric' }) : 'No due date'; }
 function avatar(name) { return `<span class="avatar ${name === 'Michaila' ? 'coral' : 'teal'}">${name[0]}</span>`; }
@@ -51,8 +52,11 @@ function projectMarkup(project) {
 }
 
 function render() {
+  const weekFromNow = new Date();
+  weekFromNow.setDate(weekFromNow.getDate() + 7);
+  const weekEnd = weekFromNow.toISOString().slice(0, 10);
   document.querySelector('#openTotal').textContent = tasks.filter(task => !task.completed).length;
-  document.querySelector('#weekTotal').textContent = tasks.filter(task => !task.completed && task.due <= '2026-08-20').length;
+  document.querySelector('#weekTotal').textContent = tasks.filter(task => !task.completed && task.due && task.due <= weekEnd).length;
   document.querySelector('#overviewTasks').innerHTML = tasks.filter(task => !task.completed && task.assignee === 'Michaila').slice(0, 4).map(taskMarkup).join('');
   document.querySelector('#overviewProjects').innerHTML = projects.map(projectMarkup).join('');
   document.querySelector('#projectList').innerHTML = projects.map(projectMarkup).join('');
