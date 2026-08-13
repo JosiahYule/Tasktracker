@@ -51,17 +51,13 @@ function projectMarkup(project) {
   const related = tasks.filter(task => task.project === project.name);
   const complete = related.filter(task => task.completed).length;
   const progress = related.length ? Math.round(complete / related.length * 100) : 0;
-  return `<article class="project-card"><i class="project-mark ${project.color}"></i><h3>${project.name}</h3><p>${project.description}</p><div class="project-meta"><span>${complete} of ${related.length} tasks</span><span>Due ${project.due}</span></div><div class="progress"><i style="width:${progress}%"></i></div></article>`;
+  return `<article class="project-card ${project.color}">
+    <div class="project-copy"><h3>${project.name}</h3><p>${project.description}</p><div class="project-meta"><span>${complete} of ${related.length} tasks</span><span>Due ${project.due}</span></div></div>
+    <div class="progress-ring" style="--progress:${progress}" role="img" aria-label="${progress}% complete"><span>${progress}%</span></div>
+  </article>`;
 }
 
 function render() {
-  const weekFromNow = new Date();
-  weekFromNow.setDate(weekFromNow.getDate() + 7);
-  const today = new Date().toISOString().slice(0, 10);
-  const weekEnd = weekFromNow.toISOString().slice(0, 10);
-  document.querySelector('#openTotal').textContent = tasks.filter(task => !task.completed).length;
-  document.querySelector('#weekTotal').textContent = tasks.filter(task => !task.completed && task.due >= today && task.due <= weekEnd).length;
-  document.querySelector('#waitingTotal').textContent = tasks.filter(task => !task.completed && task.status === 'waiting').length;
   document.querySelector('#overviewTasks').innerHTML = tasks.filter(task => !task.completed && task.assignee === 'Michaila').slice(0, 4).map(taskMarkup).join('');
   document.querySelector('#overviewProjects').innerHTML = projects.map(projectMarkup).join('');
   document.querySelector('#projectList').innerHTML = projects.map(projectMarkup).join('');

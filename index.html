@@ -4,7 +4,10 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Tasktracker</title>
-    <link rel="stylesheet" href="styles.css?v=3" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="styles.css?v=4" />
   </head>
   <body>
     <aside class="sidebar">
@@ -30,12 +33,6 @@
       </header>
 
       <section class="view active" id="overviewView">
-        <div class="summary-grid">
-          <article><span>Open</span><strong id="openTotal">0</strong><small>tasks</small></article>
-          <article><span>Due soon</span><strong id="weekTotal">0</strong><small>next 7 days</small></article>
-          <article><span>Waiting</span><strong id="waitingTotal">0</strong><small>needs a response</small></article>
-        </div>
-
         <div class="overview-grid">
           <section class="card">
             <div class="card-heading"><div><h2>My to-do list</h2><p>Michaila’s next tasks</p></div><button class="link" data-go="tasks">All tasks</button></div>
@@ -100,6 +97,6 @@
         <div class="actions"><button type="button" data-close-update>Cancel</button><button type="submit" class="primary">Share update</button></div>
       </form>
     </dialog>
-    <script src="app.js?v=3"></script>
+    <script src="app.js?v=4"></script>
   </body>
 </html>
