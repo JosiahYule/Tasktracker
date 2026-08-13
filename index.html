@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#f8f8f5" />
+    <title>Northstar — Team workspace</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@500;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <aside class="sidebar" id="sidebar">
+      <div class="brand"><span class="brand-mark">N</span><span>Northstar</span></div>
+      <button class="mobile-close" id="closeSidebar" aria-label="Close navigation">×</button>
+      <div class="workspace-switcher">
+        <div class="workspace-icon">HC</div>
+        <div><strong>Harbour & Co.</strong><small>Finance team</small></div>
+        <span class="chevrons">⌃<br />⌄</span>
+      </div>
+      <nav>
+        <p class="nav-label">Workspace</p>
+        <a class="nav-item active" href="#"><span>⌂</span> Overview</a>
+        <a class="nav-item" href="#tasks"><span>✓</span> My tasks <em>7</em></a>
+        <a class="nav-item" href="#projects"><span>▦</span> Projects</a>
+        <a class="nav-item" href="#calendar"><span>□</span> Calendar</a>
+        <p class="nav-label">Projects</p>
+        <a class="nav-item" href="#"><i class="dot coral"></i> Month-end close <em>8</em></a>
+        <a class="nav-item" href="#"><i class="dot blue"></i> FY26 planning</a>
+        <a class="nav-item" href="#"><i class="dot green"></i> Systems review</a>
+        <button class="add-project">＋ Add project</button>
+      </nav>
+      <div class="sidebar-bottom">
+        <a class="nav-item" href="#"><span>?</span> Help & resources</a>
+        <a class="nav-item" href="#"><span>⚙</span> Settings</a>
+        <div class="profile"><div class="avatar michaila">M</div><div><strong>Michaila Grant</strong><small>Controller</small></div><button>•••</button></div>
+      </div>
+    </aside>
+
+    <main>
+      <header class="topbar">
+        <button class="menu-button" id="openSidebar" aria-label="Open navigation">☰</button>
+        <div class="search"><span>⌕</span><input placeholder="Search tasks, projects, or people..." /><kbd>⌘ K</kbd></div>
+        <button class="icon-button" aria-label="Notifications">♢<span class="notification-dot"></span></button>
+        <button class="primary-button" id="newTaskButton">＋ <span>New task</span></button>
+      </header>
+
+      <div class="content">
+        <section class="welcome">
+          <div><p class="eyebrow">THURSDAY, AUGUST 13</p><h1>Good morning, Michaila <span>👋</span></h1><p>Here’s what’s happening across your team today.</p></div>
+          <div class="team-presence"><span>TEAM</span><div class="avatar-stack"><div class="avatar michaila">M</div><div class="avatar brady">B</div><button aria-label="Invite team member">＋</button></div></div>
+        </section>
+
+        <section class="stats-grid">
+          <article class="stat-card"><div class="stat-icon warm">✓</div><div><p>Tasks due today</p><strong id="dueCount">6</strong><small><b>2 completed</b> · 4 remaining</small></div><span class="trend">→</span></article>
+          <article class="stat-card"><div class="stat-icon cool">◷</div><div><p>Upcoming</p><strong>12</strong><small>Due in the next 7 days</small></div><span class="trend">↗</span></article>
+          <article class="stat-card"><div class="stat-icon mint">◌</div><div><p>Projects on track</p><strong>3 <i>/ 3</i></strong><small><b>Everything looks good</b></small></div><span class="trend">✓</span></article>
+        </section>
+
+        <div class="dashboard-grid">
+          <section class="panel task-panel" id="tasks">
+            <div class="panel-header"><div><h2>My tasks</h2><p>Things that need your attention</p></div><button class="text-button">View all <span>→</span></button></div>
+            <div class="tabs"><button class="tab active" data-tab="today">Today <span>6</span></button><button class="tab" data-tab="upcoming">Upcoming <span>12</span></button><button class="tab" data-tab="completed">Completed</button></div>
+            <div class="task-list" id="taskList"></div>
+            <button class="add-task-row" id="inlineAdd">＋ Add a task</button>
+          </section>
+
+          <aside class="right-column">
+            <section class="panel progress-panel" id="projects">
+              <div class="panel-header"><div><h2>Project progress</h2><p>Active workstreams</p></div><button class="dots">•••</button></div>
+              <div class="project-list">
+                <div class="project"><div class="project-title"><span class="project-symbol coral-bg">▤</span><div><strong>Month-end close</strong><small>8 of 12 tasks</small></div><b>67%</b></div><div class="progress"><i style="width:67%;background:#ef7358"></i></div><div class="project-meta"><span><span class="avatar mini michaila">M</span><span class="avatar mini brady">B</span></span><time>Due Aug 19</time></div></div>
+                <div class="project"><div class="project-title"><span class="project-symbol blue-bg">◫</span><div><strong>FY26 planning</strong><small>14 of 20 tasks</small></div><b>70%</b></div><div class="progress"><i style="width:70%;background:#668cc7"></i></div><div class="project-meta"><span><span class="avatar mini michaila">M</span></span><time>Due Sep 05</time></div></div>
+                <div class="project"><div class="project-title"><span class="project-symbol green-bg">⌘</span><div><strong>Systems review</strong><small>5 of 16 tasks</small></div><b>31%</b></div><div class="progress"><i style="width:31%;background:#5da68e"></i></div><div class="project-meta"><span><span class="avatar mini brady">B</span></span><time>Due Sep 28</time></div></div>
+              </div>
+              <button class="all-projects">View all projects <span>→</span></button>
+            </section>
+
+            <section class="panel activity-panel">
+              <div class="panel-header"><div><h2>Recent activity</h2><p>Updates from your team</p></div></div>
+              <div class="activity"><div class="avatar brady">B</div><div><p><strong>Brady</strong> completed <b>Reconcile operating account</b></p><time>24 minutes ago</time></div><span class="complete-icon">✓</span></div>
+              <div class="activity"><div class="avatar michaila">M</div><div><p><strong>You</strong> commented on <b>Review prepaid expenses</b></p><time>1 hour ago</time></div><span class="comment-icon">▢</span></div>
+              <div class="activity"><div class="avatar brady">B</div><div><p><strong>Brady</strong> assigned you <b>Approve payroll journal</b></p><time>Yesterday at 4:32 PM</time></div><span class="assign-icon">↗</span></div>
+            </section>
+          </aside>
+        </div>
+      </div>
+    </main>
+
+    <div class="modal-backdrop" id="taskModal" aria-hidden="true">
+      <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+        <button class="modal-close" id="closeModal">×</button>
+        <p class="eyebrow">NEW TASK</p><h2 id="modalTitle">What needs to get done?</h2>
+        <form id="taskForm">
+          <label>Task name<input id="taskName" required placeholder="e.g. Review bank reconciliation" /></label>
+          <div class="form-row"><label>Assignee<select id="assignee"><option>Michaila</option><option>Brady</option></select></label><label>Due date<input id="dueDate" type="date" /></label></div>
+          <label>Project<select id="projectSelect"><option>Month-end close</option><option>FY26 planning</option><option>Systems review</option></select></label>
+          <label class="recurring-label"><input id="recurring" type="checkbox" /><span>↻</span><div><strong>Make this recurring</strong><small>Repeat this task on a schedule</small></div></label>
+          <div class="modal-actions"><button type="button" class="secondary-button" id="cancelModal">Cancel</button><button class="primary-button" type="submit">Create task</button></div>
+        </form>
+      </div>
+    </div>
+    <div class="toast" id="toast"><span>✓</span><div><strong>Task completed</strong><small>Nice work — keep it going.</small></div></div>
+    <script src="app.js"></script>
+  </body>
+</html>
