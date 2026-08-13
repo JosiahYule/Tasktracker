@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Tasktracker</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="styles.css?v=8" />
+  </head>
+  <body>
+    <section class="auth-screen" id="authScreen">
+      <div class="auth-layout">
+        <aside class="auth-sidebar">
+          <div class="auth-brand">Tasktracker</div>
+          <div class="auth-preview">
+            <span>SHARED WORKSPACE</span>
+            <h2>Halifax and Charlottetown, working from the same list.</h2>
+            <div class="auth-people"><div><span class="avatar coral">M</span><p><strong>Michaila</strong><small>Controller · Halifax</small></p></div><div><span class="avatar teal">B</span><p><strong>Brady</strong><small>Senior Accountant · Charlottetown</small></p></div></div>
+          </div>
+        </aside>
+        <div class="auth-card">
+          <div class="auth-form-heading"><span>WELCOME BACK</span><h1>Sign in</h1><p>Enter your work email to continue.</p></div>
+          <form id="loginForm">
+            <label>Email<input id="loginEmail" type="email" autocomplete="email" placeholder="name@company.ca" required /></label>
+            <label>Password<div class="password-field"><input id="loginPassword" type="password" autocomplete="current-password" required /><button type="button" id="togglePassword" aria-label="Show password">Show</button></div></label>
+            <p class="auth-error" id="authError" role="alert"></p>
+            <button class="primary auth-submit" type="submit">Sign in</button>
+          </form>
+          <p class="auth-help">Having trouble signing in? Contact the workspace administrator.</p>
+        </div>
+      </div>
+    </section>
+    <div class="app-shell" id="appShell" hidden>
+    <aside class="sidebar">
+      <div class="brand">Tasktracker</div>
+      <nav aria-label="Main navigation">
+        <button class="nav-item active" data-view="overview">Overview</button>
+        <button class="nav-item" data-view="tasks">My to-do list</button>
+        <button class="nav-item" data-view="projects">Projects</button>
+        <button class="nav-item" data-view="recurring">Recurring tasks</button>
+        <button class="nav-item" data-view="team">Team</button>
+      </nav>
+      <div class="people">
+        <p>TEAM</p>
+        <div><span class="avatar coral">M</span><span>Michaila</span><i>Controller</i></div>
+        <div><span class="avatar teal">B</span><span>Brady</span><i>Senior Accountant</i></div>
+      </div>
+      <div class="signed-in"><div><strong id="signedInName"></strong><span id="signedInRole"></span></div><button id="signOut">Sign out</button></div>
+    </aside>
+
+    <main>
+      <header class="topbar">
+        <div><h1 id="pageTitle">Overview</h1><p id="pageSubtitle">Today’s work, in one place.</p></div>
+        <div class="header-actions"><span class="sync-status" id="syncStatus">Connecting…</span><button class="primary" id="openForm">Add task</button></div>
+      </header>
+
+      <section class="view active" id="overviewView">
+        <div class="overview-grid">
+          <section class="card">
+            <div class="card-heading"><div><h2>My to-do list</h2><p id="myTasksSubtitle">Your next tasks</p></div><button class="link" data-go="tasks">All tasks</button></div>
+            <div class="task-list" id="overviewTasks"></div>
+          </section>
+          <section class="card">
+            <div class="card-heading"><div><h2>Working on now</h2><p>A quick view across both offices</p></div></div>
+            <div class="focus-list" id="focusList"></div>
+          </section>
+          <section class="card projects-card">
+            <div class="card-heading"><div><h2>Projects</h2><p>Shared work in progress</p></div><button class="link" data-go="projects">All projects</button></div>
+            <div class="project-grid" id="overviewProjects"></div>
+          </section>
+          <section class="card">
+            <div class="card-heading"><div><h2>Recurring</h2><p>Routine work coming up</p></div><button class="link" data-go="recurring">View schedule</button></div>
+            <div class="simple-list" id="overviewRecurring"></div>
+          </section>
+        </div>
+      </section>
+
+      <section class="view" id="tasksView">
+        <div class="toolbar">
+          <div class="filters"><button class="filter active" data-filter="open">Open</button><button class="filter" data-filter="completed">Completed</button><button class="filter" data-filter="all">All</button></div>
+          <select id="personFilter" aria-label="Filter by assignee"><option value="all">Everyone</option><option>Michaila</option><option>Brady</option></select>
+        </div>
+        <div class="card"><div class="task-list" id="taskList"></div></div>
+      </section>
+
+      <section class="view" id="projectsView">
+        <div class="project-grid full" id="projectList"></div>
+      </section>
+
+      <section class="view" id="recurringView">
+        <div class="recurring-toolbar">
+          <div><h2>Schedule</h2><p>Complete an occurrence and the next one is created automatically.</p></div>
+          <button class="secondary" id="openRecurringForm">Add recurring task</button>
+        </div>
+        <div class="recurring-board" id="recurringList"></div>
+      </section>
+
+      <section class="view" id="teamView">
+        <div class="office-note">Halifax and Charlottetown are in the same time zone. Updates below are shared immediately.</div>
+        <div class="team-grid" id="teamList"></div>
+      </section>
+    </main>
+
+    <dialog id="taskDialog">
+      <form id="taskForm">
+        <div class="dialog-heading"><h2>Add a task</h2><button type="button" class="icon" id="closeForm" aria-label="Close">×</button></div>
+        <label>Task<input id="taskName" required placeholder="What needs to be done?" /></label>
+        <div class="field-row">
+          <label>Assigned to<select id="assignee"><option>Michaila</option><option>Brady</option></select></label>
+          <label>Due date<input id="dueDate" type="date" /></label>
+        </div>
+        <div class="field-row"><label>Project<select id="project"><option>Month-end close</option><option>FY26 planning</option><option>Systems review</option><option>General</option></select></label><label>Status<select id="status"><option value="todo">To do</option><option value="doing">In progress</option><option value="waiting">Waiting</option></select></label></div>
+        <p class="form-help">For work that repeats, use the Recurring tasks schedule instead.</p>
+        <div class="actions"><button type="button" id="cancelForm">Cancel</button><button type="submit" class="primary">Add task</button></div>
+      </form>
+    </dialog>
+    <dialog id="recurringDialog">
+      <form id="recurringForm">
+        <div class="dialog-heading"><h2>Add recurring task</h2><button type="button" class="icon" data-close-recurring aria-label="Close">×</button></div>
+        <label>Task<input id="recurringName" required placeholder="e.g. Reconcile operating account" /></label>
+        <div class="field-row"><label>Assigned to<select id="recurringAssignee"><option>Michaila</option><option>Brady</option></select></label><label>Project<select id="recurringProject"><option>Month-end close</option><option>FY26 planning</option><option>Systems review</option><option>General</option></select></label></div>
+        <div class="field-row"><label>Repeats<select id="frequency"><option value="weekly">Weekly</option><option value="monthly" selected>Monthly</option><option value="quarterly">Quarterly</option><option value="yearly">Yearly</option></select></label><label>First due date<input id="recurringDueDate" type="date" required /></label></div>
+        <p class="form-help">The next due date will be scheduled only after this occurrence is completed.</p>
+        <div class="actions"><button type="button" data-close-recurring>Cancel</button><button type="submit" class="primary">Add to schedule</button></div>
+      </form>
+    </dialog>
+    <dialog id="updateDialog">
+      <form id="updateForm">
+        <div class="dialog-heading"><div><h2>Share an update</h2><p id="updateTaskName"></p></div><button type="button" class="icon" data-close-update aria-label="Close">×</button></div>
+        <input id="updateTaskId" type="hidden" />
+        <label>Status<select id="updateStatus"><option value="todo">To do</option><option value="doing">In progress</option><option value="waiting">Waiting</option></select></label>
+        <label>Note<textarea id="updateNote" maxlength="180" placeholder="Add a short note for the other person (optional)"></textarea></label>
+        <div class="actions"><button type="button" data-close-update>Cancel</button><button type="submit" class="primary">Share update</button></div>
+      </form>
+    </dialog>
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+    <script type="module" src="app.js?v=8"></script>
+    </div>
+  </body>
+</html>
