@@ -75,6 +75,15 @@ export const taskStore = {
   }
 };
 
+export const projectStore = {
+  async list() { return request('projects?select=*&order=created_at.asc'); },
+  async create(project) {
+    const [created] = await request('projects', { method: 'POST', headers: { Prefer: 'return=representation' }, body: JSON.stringify(project) });
+    return created;
+  },
+  async remove(id) { return request(`projects?id=eq.${encodeURIComponent(id)}`, { method: 'DELETE' }); }
+};
+
 export const auth = {
   getSession() { return session; },
 

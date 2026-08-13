@@ -1,10 +1,6 @@
-import { auth, taskStore } from './supabase.js';
+import { auth, projectStore, taskStore } from './supabase.js';
 
-const projects = [
-  { name: 'Month-end close', description: 'Complete August close and reporting', due: 'Aug 19', color: 'coral' },
-  { name: 'FY26 planning', description: 'Build next year’s operating plan', due: 'Sep 5', color: 'blue' },
-  { name: 'Systems review', description: 'Review access and finance workflows', due: 'Sep 28', color: 'teal' }
-];
+let projects = [];
 let tasks = [];
 let taskFilter = 'open';
 let currentProfile = null;
@@ -12,6 +8,7 @@ let isSaving = false;
 const dialog = document.querySelector('#taskDialog');
 const updateDialog = document.querySelector('#updateDialog');
 const recurringDialog = document.querySelector('#recurringDialog');
+const projectDialog = document.querySelector('#projectDialog');
 const authScreen = document.querySelector('#authScreen');
 const appShell = document.querySelector('#appShell');
 
@@ -25,7 +22,7 @@ async function startApp() {
     authScreen.hidden = true;
     appShell.hidden = false;
     document.querySelector('#myTasksSubtitle').textContent = profile.role === 'admin' ? 'Open tasks across the team' : `${profile.display_name}’s next tasks`;
-    await loadTasks();
+    await loadWorkspace();
   } catch (error) {
     auth.signOut();
     authScreen.hidden = false;
@@ -53,12 +50,12 @@ function showToast(message, type = '') {
   window.clearTimeout(showToast.timer);
   showToast.timer = window.setTimeout(() => { toast.className = 'toast'; }, 3000);
 }
-async function loadTasks({ quiet = false } = {}) {
+async function loadWorkspace({ quiet = false } = {}) {
   try {
     if (!quiet) setSyncStatus('Connecting…');
-    const records = await taskStore.list();
-    tasks = records;
-    tasks = tasks.map(fromDatabase);
+    const [taskRecords, projectRecords] = await Promise.all([taskStore.list(), projectStore.list()]);
+    tasks = taskRecords.map(fromDatabase);
+    projects = projectRecords;
     render();
     setSyncStatus('Up to date', 'online');
   } catch (error) {
@@ -118,7 +115,7 @@ function projectMarkup(project) {
   const complete = related.filter(task => task.completed).length;
   const progress = related.length ? Math.round(complete / related.length * 100) : 0;
   return `<article class="project-card ${project.color}">
-    <div class="project-copy"><h3>${project.name}</h3><p>${project.description}</p><div class="project-meta"><span>${complete} of ${related.length} tasks</span><span>Due ${project.due}</span></div></div>
+    <div class="project-copy"><h3>${safe(project.name)}</h3><p>${safe(project.description)}</p><div class="project-meta"><span>${complete} of ${related.length} tasks</span><span>Due ${dateLabel(project.due)}</span></div></div>
     <div class="progress-ring" style="--progress:${progress}" role="img" aria-label="${progress}% complete"><span>${progress}%</span></div>
   </article>`;
 }
@@ -126,8 +123,11 @@ function projectMarkup(project) {
 function render() {
   const personalTasks = tasks.filter(task => !task.completed && (currentProfile?.role === 'admin' || task.assignee === currentProfile?.display_name));
   document.querySelector('#overviewTasks').innerHTML = personalTasks.length ? personalTasks.slice(0, 4).map(taskMarkup).join('') : '<p class="empty">No open tasks.</p>';
-  document.querySelector('#overviewProjects').innerHTML = projects.map(projectMarkup).join('');
-  document.querySelector('#projectList').innerHTML = projects.map(projectMarkup).join('');
+  document.querySelector('#overviewProjects').innerHTML = projects.length ? projects.slice(0, 3).map(projectMarkup).join('') : '<p class="empty">No projects yet.</p>';
+  document.querySelector('#projectList').innerHTML = projects.length ? projects.map(projectMarkup).join('') : '<p class="empty">No projects yet. Create one to organize related tasks.</p>';
+  const projectOptions = `${projects.map(project => `<option>${safe(project.name)}</option>`).join('')}<option>General</option>`;
+  document.querySelector('#project').innerHTML = projectOptions;
+  document.querySelector('#recurringProject').innerHTML = projectOptions;
 
   const recurring = tasks.filter(task => task.recurring && !task.completed);
   const recurringMarkup = recurring.filter(task => !task.paused).map(task => `<article class="simple-item"><div><strong>${safe(task.name)}</strong><span>${safe(task.assignee)} · ${frequencyLabel(task.frequency)} · Due ${dateLabel(task.due)}</span></div></article>`).join('');
@@ -195,6 +195,8 @@ document.querySelector('#closeForm').addEventListener('click', () => dialog.clos
 document.querySelector('#cancelForm').addEventListener('click', () => dialog.close());
 document.querySelector('#openRecurringForm').addEventListener('click', () => recurringDialog.showModal());
 document.querySelectorAll('[data-close-recurring]').forEach(button => button.addEventListener('click', () => recurringDialog.close()));
+document.querySelector('#openProjectForm').addEventListener('click', () => projectDialog.showModal());
+document.querySelectorAll('[data-close-project]').forEach(button => button.addEventListener('click', () => projectDialog.close()));
 document.querySelectorAll('[data-close-update]').forEach(button => button.addEventListener('click', () => updateDialog.close()));
 document.querySelector('#taskForm').addEventListener('submit', async event => {
   event.preventDefault();
@@ -207,6 +209,19 @@ document.querySelector('#recurringForm').addEventListener('submit', async event 
   setSyncStatus('Saving…');
   await createTask({ name: document.querySelector('#recurringName').value.trim(), assignee: document.querySelector('#recurringAssignee').value, due: document.querySelector('#recurringDueDate').value, project: document.querySelector('#recurringProject').value, recurring: true, frequency: document.querySelector('#frequency').value, paused: false, recurrenceGenerated: false, status: 'todo', note: '', completed: false });
   event.target.reset(); recurringDialog.close(); render(); setSyncStatus('Up to date', 'online');
+});
+document.querySelector('#projectForm').addEventListener('submit', async event => {
+  event.preventDefault();
+  setSyncStatus('Saving…');
+  try {
+    const project = await projectStore.create({ name: document.querySelector('#projectName').value.trim(), description: document.querySelector('#projectDescription').value.trim(), due: document.querySelector('#projectDueDate').value, color: document.querySelector('#projectColor').value });
+    projects.push(project);
+    event.target.reset(); projectDialog.close(); render();
+    setSyncStatus('Up to date', 'online'); showToast('Project created.');
+  } catch (error) {
+    console.error(error); setSyncStatus('Unable to save', 'error');
+    showToast(error.message.includes('duplicate') ? 'A project with that name already exists.' : 'The project was not created. Please try again.', 'error');
+  }
 });
 document.querySelector('#updateForm').addEventListener('submit', async event => {
   event.preventDefault();
@@ -258,5 +273,5 @@ window.addEventListener('unhandledrejection', event => {
 
 startApp();
 setInterval(() => {
-  if (auth.getSession() && !isSaving && !document.querySelector('dialog[open]')) loadTasks({ quiet: true });
+  if (auth.getSession() && !isSaving && !document.querySelector('dialog[open]')) loadWorkspace({ quiet: true });
 }, 5000);

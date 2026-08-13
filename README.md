@@ -31,8 +31,8 @@ The app is configured to use Supabase for shared persistence. Before opening it:
 
 1. Open the Supabase project SQL Editor.
 2. Open `supabase-schema.sql`, copy the **entire file** into a new SQL Editor query, and
-   run it before inserting any profiles. The result should list both `profiles` and
-   `tasks`.
+   run it before inserting any profiles. The result should list `profiles`, `projects`,
+   and `tasks`.
 3. In **Authentication → Users**, create accounts for Michaila, Brady, and the administrator.
 4. Copy each user UUID and create their profile in the SQL Editor:
 

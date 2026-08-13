@@ -7,7 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="styles.css?v=8" />
+    <link rel="stylesheet" href="styles.css?v=9" />
   </head>
   <body>
     <section class="auth-screen" id="authScreen">
@@ -53,7 +53,7 @@
     <main>
       <header class="topbar">
         <div><h1 id="pageTitle">Overview</h1><p id="pageSubtitle">Today’s work, in one place.</p></div>
-        <div class="header-actions"><span class="sync-status" id="syncStatus">Connecting…</span><button class="primary" id="openForm">Add task</button></div>
+        <div class="header-actions"><span class="sync-status" id="syncStatus">Connecting…</span></div>
       </header>
 
       <section class="view active" id="overviewView">
@@ -80,12 +80,13 @@
       <section class="view" id="tasksView">
         <div class="toolbar">
           <div class="filters"><button class="filter active" data-filter="open">Open</button><button class="filter" data-filter="completed">Completed</button><button class="filter" data-filter="all">All</button></div>
-          <select id="personFilter" aria-label="Filter by assignee"><option value="all">Everyone</option><option>Michaila</option><option>Brady</option></select>
+          <div class="toolbar-actions"><select id="personFilter" aria-label="Filter by assignee"><option value="all">Everyone</option><option>Michaila</option><option>Brady</option></select><button class="primary" id="openForm">Add task</button></div>
         </div>
         <div class="card"><div class="task-list" id="taskList"></div></div>
       </section>
 
       <section class="view" id="projectsView">
+        <div class="section-toolbar"><div><h2>All projects</h2><p>Create a project, then assign tasks to it.</p></div><button class="secondary" id="openProjectForm">New project</button></div>
         <div class="project-grid full" id="projectList"></div>
       </section>
 
@@ -116,6 +117,15 @@
         <div class="actions"><button type="button" id="cancelForm">Cancel</button><button type="submit" class="primary">Add task</button></div>
       </form>
     </dialog>
+    <dialog id="projectDialog">
+      <form id="projectForm">
+        <div class="dialog-heading"><h2>New project</h2><button type="button" class="icon" data-close-project aria-label="Close">×</button></div>
+        <label>Project name<input id="projectName" required maxlength="80" placeholder="e.g. Year-end audit" /></label>
+        <label>Description<textarea id="projectDescription" required maxlength="160" placeholder="What is this project for?"></textarea></label>
+        <div class="field-row"><label>Due date<input id="projectDueDate" type="date" required /></label><label>Colour<select id="projectColor"><option value="coral">Peach</option><option value="blue">Blue</option><option value="teal">Mint</option><option value="lavender">Lavender</option></select></label></div>
+        <div class="actions"><button type="button" data-close-project>Cancel</button><button type="submit" class="primary">Create project</button></div>
+      </form>
+    </dialog>
     <dialog id="recurringDialog">
       <form id="recurringForm">
         <div class="dialog-heading"><h2>Add recurring task</h2><button type="button" class="icon" data-close-recurring aria-label="Close">×</button></div>
@@ -136,7 +146,7 @@
       </form>
     </dialog>
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
-    <script type="module" src="app.js?v=8"></script>
+    <script type="module" src="app.js?v=9"></script>
     </div>
   </body>
 </html>
