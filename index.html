@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Tasktracker</title>
+    <link rel="stylesheet" href="styles.css?v=3" />
+  </head>
+  <body>
+    <aside class="sidebar">
+      <div class="brand">Tasktracker</div>
+      <nav aria-label="Main navigation">
+        <button class="nav-item active" data-view="overview">Overview</button>
+        <button class="nav-item" data-view="tasks">My to-do list</button>
+        <button class="nav-item" data-view="projects">Projects</button>
+        <button class="nav-item" data-view="recurring">Recurring tasks</button>
+        <button class="nav-item" data-view="team">Team</button>
+      </nav>
+      <div class="people">
+        <p>TEAM</p>
+        <div><span class="avatar coral">M</span><span>Michaila</span><i>Controller</i></div>
+        <div><span class="avatar teal">B</span><span>Brady</span><i>Assistant Controller</i></div>
+      </div>
+    </aside>
+
+    <main>
+      <header class="topbar">
+        <div><h1 id="pageTitle">Overview</h1><p id="pageSubtitle">Today’s work, in one place.</p></div>
+        <button class="primary" id="openForm">Add task</button>
+      </header>
+
+      <section class="view active" id="overviewView">
+        <div class="summary-grid">
+          <article><span>Open</span><strong id="openTotal">0</strong><small>tasks</small></article>
+          <article><span>Due soon</span><strong id="weekTotal">0</strong><small>next 7 days</small></article>
+          <article><span>Waiting</span><strong id="waitingTotal">0</strong><small>needs a response</small></article>
+        </div>
+
+        <div class="overview-grid">
+          <section class="card">
+            <div class="card-heading"><div><h2>My to-do list</h2><p>Michaila’s next tasks</p></div><button class="link" data-go="tasks">All tasks</button></div>
+            <div class="task-list" id="overviewTasks"></div>
+          </section>
+          <section class="card">
+            <div class="card-heading"><div><h2>Working on now</h2><p>A quick view across both offices</p></div></div>
+            <div class="focus-list" id="focusList"></div>
+          </section>
+          <section class="card projects-card">
+            <div class="card-heading"><div><h2>Projects</h2><p>Shared work in progress</p></div><button class="link" data-go="projects">All projects</button></div>
+            <div class="project-grid" id="overviewProjects"></div>
+          </section>
+          <section class="card">
+            <div class="card-heading"><div><h2>Recurring</h2><p>Routine work coming up</p></div><button class="link" data-go="recurring">View schedule</button></div>
+            <div class="simple-list" id="overviewRecurring"></div>
+          </section>
+        </div>
+      </section>
+
+      <section class="view" id="tasksView">
+        <div class="toolbar">
+          <div class="filters"><button class="filter active" data-filter="open">Open</button><button class="filter" data-filter="completed">Completed</button><button class="filter" data-filter="all">All</button></div>
+          <select id="personFilter" aria-label="Filter by assignee"><option value="all">Everyone</option><option>Michaila</option><option>Brady</option></select>
+        </div>
+        <div class="card"><div class="task-list" id="taskList"></div></div>
+      </section>
+
+      <section class="view" id="projectsView">
+        <div class="project-grid full" id="projectList"></div>
+      </section>
+
+      <section class="view" id="recurringView">
+        <div class="card simple-list recurring-list" id="recurringList"></div>
+      </section>
+
+      <section class="view" id="teamView">
+        <div class="office-note">Halifax and Charlottetown are in the same time zone. Updates below are shared immediately.</div>
+        <div class="team-grid" id="teamList"></div>
+      </section>
+    </main>
+
+    <dialog id="taskDialog">
+      <form id="taskForm">
+        <div class="dialog-heading"><h2>Add a task</h2><button type="button" class="icon" id="closeForm" aria-label="Close">×</button></div>
+        <label>Task<input id="taskName" required placeholder="What needs to be done?" /></label>
+        <div class="field-row">
+          <label>Assigned to<select id="assignee"><option>Michaila</option><option>Brady</option></select></label>
+          <label>Due date<input id="dueDate" type="date" /></label>
+        </div>
+        <div class="field-row"><label>Project<select id="project"><option>Month-end close</option><option>FY26 planning</option><option>Systems review</option><option>General</option></select></label><label>Status<select id="status"><option value="todo">To do</option><option value="doing">In progress</option><option value="waiting">Waiting</option></select></label></div>
+        <label class="check-label"><input id="recurring" type="checkbox" />Recurring task</label>
+        <div class="actions"><button type="button" id="cancelForm">Cancel</button><button type="submit" class="primary">Add task</button></div>
+      </form>
+    </dialog>
+    <dialog id="updateDialog">
+      <form id="updateForm">
+        <div class="dialog-heading"><div><h2>Share an update</h2><p id="updateTaskName"></p></div><button type="button" class="icon" data-close-update aria-label="Close">×</button></div>
+        <input id="updateTaskId" type="hidden" />
+        <label>Status<select id="updateStatus"><option value="todo">To do</option><option value="doing">In progress</option><option value="waiting">Waiting</option></select></label>
+        <label>Note<textarea id="updateNote" maxlength="180" placeholder="Add a short note for the other person (optional)"></textarea></label>
+        <div class="actions"><button type="button" data-close-update>Cancel</button><button type="submit" class="primary">Share update</button></div>
+      </form>
+    </dialog>
+    <script src="app.js?v=3"></script>
+  </body>
+</html>
