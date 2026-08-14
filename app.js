@@ -421,7 +421,9 @@ function noteTotal(type, id) {
 
 function notesButton(type, id) {
   const total = noteTotal(type, id);
-  return `<button class="notes-button" data-notes-type="${type}" data-notes-id="${id}">Notes${total ? ` <b>${total}</b>` : ''}</button>`;
+  // A note count is information and stays visible; an empty Notes button is
+  // just a control, so it waits for hover along with Edit and Delete.
+  return `<button class="notes-button${total ? ' has-notes' : ''}" data-notes-type="${type}" data-notes-id="${id}">Notes${total ? ` <b>${total}</b>` : ''}</button>`;
 }
 
 /**
@@ -434,10 +436,16 @@ function taskMarkup(task, { compact = false } = {}) {
   const meta = [safe(task.project), task.recurring ? frequencyLabel(task.frequency) : ''].filter(Boolean).join(' · ');
   const state = task.completed ? 'none' : due.state;
 
+  // Only say the status when it is worth saying. Nearly every task is "To do",
+  // so printing it on every row was a column of noise.
+  const status = task.status === 'todo' || task.completed
+    ? ''
+    : `<span class="status ${safe(task.status)}">${statusLabel(task.status)}</span>`;
+
   return `<article class="task ${task.completed ? 'done' : ''} ${compact ? 'compact' : ''}" data-id="${task.id}" data-due="${state}" data-priority="${safe(task.priority || 'normal')}">
     <button class="complete" role="checkbox" aria-checked="${task.completed}" aria-label="${task.completed ? 'Reopen' : 'Complete'} ${safe(task.name)}">✓</button>
     <div class="task-copy"><strong>${safe(task.name)}</strong><span class="task-meta">${meta}</span></div>
-    <div class="task-tags"><span class="due-chip" data-state="${state}">${safe(due.label)}</span><span class="status ${safe(task.status)}">${statusLabel(task.status)}</span></div>
+    <div class="task-tags"><span class="due-chip" data-state="${state}">${safe(due.label)}</span>${status}</div>
     ${avatar(task.assignee)}
     ${compact ? '' : `<div class="task-tools">${notesButton('task', task.id)}<button class="edit">Edit</button><button class="delete" aria-label="Delete ${safe(task.name)}">×</button></div>`}
     ${!compact && task.note ? `<p class="task-note">${safe(task.note)}</p>` : ''}
@@ -554,25 +562,38 @@ function renderActiveFilters() {
   container.hidden = !chips.length;
 }
 
-function projectMarkup(project) {
+/**
+ * `compact` is the overview preview: no Notes control, since the overview is
+ * for glancing and the Projects tab is for working.
+ */
+function projectMarkup(project, { compact = false } = {}) {
   const related = tasks.filter(task => task.project === project.name);
   const complete = related.filter(task => task.completed).length;
-  const progress = related.length ? Math.round(complete / related.length * 100) : 0;
   const overdue = related.filter(task => !task.completed && dueInfo(task.due).state === 'overdue').length;
-  const due = dueInfo(project.due);
+
+  // One line instead of three, and no progress ring for a project with nothing
+  // in it yet: a 0% dial is a graphic that says nothing.
+  const summary = [
+    related.length ? `${complete} of ${related.length} done` : 'No tasks yet',
+    project.due ? `Due ${dueInfo(project.due).label}` : ''
+  ].filter(Boolean).join(' · ');
+
+  const progress = related.length ? Math.round(complete / related.length * 100) : null;
+  const ring = progress === null
+    ? ''
+    : `<div class="progress-ring" style="--progress:${progress}" role="img" aria-label="${progress}% complete"><span>${progress}%</span></div>`;
 
   return `<article class="project-card ${safe(project.color)}">
     <div class="project-copy">
       <h3>${safe(project.name)}</h3>
       <p>${safe(project.description)}</p>
       <div class="project-meta">
-        <span>${complete} of ${related.length} ${related.length === 1 ? 'task' : 'tasks'} done</span>
-        <span>${project.due ? `Due ${safe(due.label)}` : 'No due date'}</span>
+        <span>${safe(summary)}</span>
         ${overdue ? `<span class="overdue">${overdue} overdue</span>` : ''}
       </div>
-      ${notesButton('project', project.id)}
+      ${compact ? '' : notesButton('project', project.id)}
     </div>
-    <div class="progress-ring" style="--progress:${progress}" role="img" aria-label="${progress}% complete"><span>${progress}%</span></div>
+    ${ring}
   </article>`;
 }
 
@@ -602,21 +623,13 @@ function renderAttentionBand() {
 }
 
 function renderNavCounts() {
-  const openTasks = tasks.filter(task => !task.completed);
-  const mine = openTasks.filter(task => currentProfile?.role === 'admin' || task.assignee === currentProfile?.display_name);
+  const mine = tasks.filter(task => !task.completed && (currentProfile?.role === 'admin' || task.assignee === currentProfile?.display_name));
   const overdue = mine.filter(task => dueInfo(task.due).state === 'overdue').length;
 
-  const set = (id, value, tone = '') => {
-    const node = $(id);
-    node.hidden = !value;
-    node.textContent = value;
-    if (tone) node.dataset.tone = tone; else delete node.dataset.tone;
-  };
-
-  set('#navCountOverview', overdue, 'overdue');
-  set('#navCountTasks', openTasks.length);
-  set('#navCountProjects', projects.length);
-  set('#navCountRecurring', tasks.filter(task => task.recurring && !task.completed && !task.paused).length);
+  const badge = $('#navCountOverview');
+  badge.hidden = !overdue;
+  badge.textContent = overdue;
+  badge.dataset.tone = 'overdue';
 }
 
 function renderPeopleControls() {
@@ -652,7 +665,7 @@ function render() {
     : emptyState('You are all caught up', 'Nothing open is assigned to you.');
 
   $('#overviewProjects').innerHTML = projects.length
-    ? projects.slice(0, 3).map(projectMarkup).join('')
+    ? projects.slice(0, 3).map(project => projectMarkup(project, { compact: true })).join('')
     : emptyState('No projects yet', 'Create one to group related tasks.');
   $('#projectList').innerHTML = projects.length
     ? projects.map(projectMarkup).join('')
@@ -667,12 +680,6 @@ function render() {
   }
 
   const recurring = sortTasks(tasks.filter(task => task.recurring && !task.completed));
-  $('#overviewRecurring').innerHTML = recurring.filter(task => !task.paused).slice(0, 5)
-    .map(task => {
-      const due = dueInfo(task.due);
-      return `<article class="simple-item"><div><strong>${safe(task.name)}</strong><span>${safe(task.assignee)} · ${frequencyLabel(task.frequency)}</span></div><span class="due-chip" data-state="${due.state}">${safe(due.label)}</span></article>`;
-    }).join('') || emptyState('Nothing scheduled', 'Recurring work will show up here.');
-
   $('#recurringList').innerHTML = recurring.length
     ? recurring.map(task => {
         const due = dueInfo(task.due);
@@ -690,23 +697,6 @@ function render() {
         </article>`;
       }).join('')
     : emptyState('Nothing scheduled', 'Add the reconciliations and filings that repeat.');
-
-  $('#focusList').innerHTML = members.map(person => {
-    const name = person.display_name;
-    const open = tasks.filter(task => !task.completed && task.assignee === name);
-    const current = open.find(task => task.status === 'doing') || sortTasks(open)[0];
-    const overdue = open.filter(task => dueInfo(task.due).state === 'overdue').length;
-
-    return `<article class="focus">${avatar(name)}
-      <div class="focus-copy">
-        <strong>${safe(name)}${person.office ? `<small>${safe(person.office)}</small>` : ''}</strong>
-        <span>${current ? safe(current.name) : 'Nothing assigned'}</span>
-        ${current?.note ? `<p>${safe(current.note)}</p>` : ''}
-        ${overdue ? `<p style="color:var(--overdue)">${overdue} overdue</p>` : ''}
-      </div>
-      <i>${current ? statusLabel(current.status) : 'Clear'}</i>
-    </article>`;
-  }).join('');
 
   $('#teamList').innerHTML = members.map(person => {
     const name = person.display_name;
@@ -877,7 +867,6 @@ function showView(view) {
   });
 
   $('#pageTitle').textContent = VIEW_TITLES[view][0];
-  $('#pageSubtitle').textContent = VIEW_TITLES[view][1];
 
   const [label] = VIEW_ACTIONS[view];
   $('#primaryAction').textContent = label;
@@ -1165,8 +1154,7 @@ async function startApp() {
     currentProfile = await auth.profile();
     $('#signedInName').textContent = currentProfile.display_name;
     $('#signedInRole').textContent = currentProfile.role;
-    $('#myTasksSubtitle').textContent = currentProfile.role === 'admin' ? 'Across the team, soonest first' : 'Sorted by due date';
-    authScreen.hidden = true;
+      authScreen.hidden = true;
     appShell.hidden = false;
     await loadWorkspace();
     schedulePoll();
