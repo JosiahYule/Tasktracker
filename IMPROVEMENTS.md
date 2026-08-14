@@ -73,6 +73,39 @@ mid-sentence.
 
 `supabase-schema.sql` is idempotent, so it doubles as the migration. Run the whole file.
 
+## Sharing to Slack
+
+A Share button on each task composes a message and copies it to the clipboard, ready to
+paste into Slack, Teams, or email. This is deliberately step one of two.
+
+**Why not post to Slack from the browser.** Tasktracker is static files with no server.
+An incoming webhook URL or a bot token placed in `app.js` is readable by anyone who
+views source. Slack also does not send CORS headers on `hooks.slack.com`, so a browser
+`fetch` to a webhook is blocked outright; the `application/x-www-form-urlencoded` trick
+that skips the preflight is undocumented and unsupported. Webhooks post to one fixed
+channel besides, so a direct message to a person is not possible through them at all.
+
+**The path to real Slack delivery.** A Supabase Edge Function, which needs no new
+infrastructure:
+
+1. Create a Slack app in the workspace with the `chat:write` scope and install it.
+2. Store the bot token as a Supabase secret. It must never be committed or pasted into
+   a chat window.
+3. Add `slack_user_id text` to `public.profiles` and fill in each person's `U...` id.
+4. Deploy a function that verifies the caller's Supabase JWT, looks up the recipient's
+   `slack_user_id`, and calls `chat.postMessage` with that id as the channel.
+5. Point the Share dialog's submit handler at the function.
+
+`sharePayload()` in `app.js` already returns `{ taskId, recipient, message, text }`,
+which is exactly what that function needs. Composition and delivery were kept apart so
+this swap does not touch the message formatting.
+
+**Deep links are already in place.** `#task=42` opens the workspace, clears every
+filter so the task is reachable even when completed or assigned to someone else, scrolls
+to it and highlights it. Links are omitted from shared messages while the app runs on
+localhost, since nobody else can open them. That resolves as soon as the app is hosted
+somewhere both offices can reach, which the Slack work needs anyway.
+
 ## Still open
 
 - **Realtime instead of polling.** Supabase Realtime over a websocket would remove the
@@ -80,7 +113,12 @@ mid-sentence.
 - **Bulk actions.** Marking five reconciliations complete still takes five clicks.
 - **Attachments.** There is nowhere to put the bank statement PDF a task refers to.
 - **Email or push reminders** for overdue work. Nothing currently reaches anyone who is
-  not looking at the tab.
+  not looking at the tab. A scheduled Edge Function posting a morning digest of overdue
+  and due-today work would reuse the same Slack plumbing described above and probably
+  beats manual sharing for the recurring case.
+- **Hosting.** The app runs from a local static server, so shared links only work for
+  the person who generated them. Any static host both offices can reach fixes this and
+  is a prerequisite for the Slack work.
 - **The `tasks.project` text column is still the value the app writes.** `project_id` is
   maintained alongside it by a trigger for integrity. Moving the app to write
   `project_id` directly would be cleaner and is a contained follow-up.

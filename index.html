@@ -196,6 +196,19 @@
       </form>
     </dialog>
 
+    <dialog id="shareDialog" aria-labelledby="shareDialogTitle">
+      <form id="shareForm">
+        <div class="dialog-heading"><div><h2 id="shareDialogTitle">Share this task</h2><p id="shareTaskName"></p></div><button type="button" class="icon" data-close="shareDialog" aria-label="Close">×</button></div>
+        <input id="shareTaskId" type="hidden" />
+        <label>Send to<select id="shareRecipient"></select></label>
+        <label class="note-entry">Message<textarea id="shareMessage" maxlength="300" placeholder="Why does this need attention now?"></textarea><small><span id="shareCount">0</span>/300</small></label>
+        <p class="preview-label">Preview</p>
+        <pre class="share-preview" id="sharePreview"></pre>
+        <p class="form-help" id="shareLocalNote" hidden>No link is included because this workspace is running on localhost, which nobody else can open. Host it somewhere both offices can reach and links will be added automatically.</p>
+        <div class="actions"><button type="button" data-close="shareDialog">Cancel</button><button type="submit" class="primary" id="shareSubmit">Copy for Slack</button></div>
+      </form>
+    </dialog>
+
     <dialog id="confirmDialog" aria-labelledby="confirmTitle">
       <div class="confirm-body">
         <div class="dialog-heading"><h2 id="confirmTitle">Are you sure?</h2></div>

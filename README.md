@@ -24,6 +24,8 @@ Then visit `http://localhost:4173`.
 - Threaded notes on tasks and projects, plus a per-task history of who changed what
 - Light, dark, and automatic colour themes
 - Keyboard shortcuts: `N` for the current page's action, `/` to search
+- Share a task as a formatted message for Slack, Teams, or email
+- Deep links (`#task=42`) that open a shared task with filters cleared
 - Shared Supabase persistence with background sync
 
 ## Supabase setup

@@ -551,6 +551,22 @@ input:hover, select:hover, textarea:hover { border-color: var(--ink-3); }
 .history-item span { color: var(--ink-2); }
 .history-item b { color: var(--ink); font-weight: 600; }
 
+.preview-label { margin: 0 0 6px; color: var(--ink-2); font-size: .8125rem; font-weight: 600; }
+.share-preview {
+  max-height: 190px; overflow-y: auto; margin: 0 0 16px;
+  border-radius: 8px; padding: 12px 13px;
+  background: var(--surface-2); color: var(--ink-2);
+  font-family: inherit; font-size: .8125rem; line-height: 1.6;
+  white-space: pre-wrap; word-break: break-word;
+}
+
+/* Marks the row a shared link points at. */
+.task.flash { animation: flash 2s ease-out; }
+@keyframes flash {
+  0%, 55% { background: var(--lavender); }
+  100% { background: transparent; }
+}
+
 .note-entry { position: relative; }
 .note-entry small { position: absolute; right: 10px; bottom: 8px; color: var(--ink-3); font-size: .6875rem; font-weight: 400; }
 .note-entry textarea { padding-bottom: 26px; }

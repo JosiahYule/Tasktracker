@@ -35,6 +35,7 @@ const dialogs = {
   project: $('#projectDialog'),
   recurring: $('#recurringDialog'),
   notes: $('#notesDialog'),
+  share: $('#shareDialog'),
   confirm: $('#confirmDialog')
 };
 const authScreen = $('#authScreen');
@@ -447,7 +448,7 @@ function taskMarkup(task, { compact = false } = {}) {
     <div class="task-copy"><strong>${safe(task.name)}</strong><span class="task-meta">${meta}</span></div>
     <div class="task-tags"><span class="due-chip" data-state="${state}">${safe(due.label)}</span>${status}</div>
     ${avatar(task.assignee)}
-    ${compact ? '' : `<div class="task-tools">${notesButton('task', task.id)}<button class="edit">Edit</button><button class="delete" aria-label="Delete ${safe(task.name)}">×</button></div>`}
+    ${compact ? '' : `<div class="task-tools">${notesButton('task', task.id)}<button class="share">Share</button><button class="edit">Edit</button><button class="delete" aria-label="Delete ${safe(task.name)}">×</button></div>`}
     ${!compact && task.note ? `<p class="task-note">${safe(task.note)}</p>` : ''}
   </article>`;
 }
@@ -792,6 +793,93 @@ function openNotes(type, id, name) {
 }
 
 /* --------------------------------------------------------------------------
+   Sharing
+
+   Today this composes a message and puts it on the clipboard. The composition
+   is deliberately separate from the delivery so that posting to Slack through
+   a Supabase Edge Function can reuse sharePayload() unchanged: the function
+   would take the same task id, recipient and message, and call chat.postMessage
+   with the Slack bot token held server-side. A bot token cannot live in this
+   file, since anyone can read it.
+   -------------------------------------------------------------------------- */
+
+/** Empty on localhost, where a link would be useless to whoever receives it. */
+function shareLink(taskId) {
+  const { origin, pathname, hostname, protocol } = window.location;
+  const unreachable = protocol === 'file:' || ['localhost', '127.0.0.1', '[::1]', ''].includes(hostname);
+  return unreachable ? '' : `${origin}${pathname}#task=${taskId}`;
+}
+
+function sharePayload(task, { recipient = '', message = '' } = {}) {
+  const due = dueInfo(task.due);
+  const timing = due.state === 'overdue' ? `Overdue by ${due.label.replace(/ late$/, '')}`
+    : due.state === 'none' ? 'No due date'
+    : `Due ${due.label.toLowerCase()}`;
+
+  const lines = [];
+  if (message.trim()) lines.push(recipient ? `${recipient}: ${message.trim()}` : message.trim(), '');
+  else if (recipient) lines.push(`${recipient}, can you take a look at this?`, '');
+
+  lines.push(task.name);
+  lines.push([timing, `assigned to ${task.assignee}`, task.project].filter(Boolean).join(' · '));
+  if (task.note) lines.push(`Handoff note: ${task.note}`);
+
+  const link = shareLink(task.id);
+  if (link) lines.push(link);
+
+  return { taskId: task.id, recipient, message: message.trim(), text: lines.join('\n') };
+}
+
+function renderSharePreview() {
+  const task = tasks.find(item => item.id === Number($('#shareTaskId').value));
+  if (!task) return;
+  $('#sharePreview').textContent = sharePayload(task, {
+    recipient: $('#shareRecipient').value,
+    message: $('#shareMessage').value
+  }).text;
+}
+
+function openShareDialog(task) {
+  $('#shareTaskId').value = task.id;
+  $('#shareTaskName').textContent = task.name;
+  $('#shareMessage').value = '';
+  $('#shareCount').textContent = '0';
+  $('#shareLocalNote').hidden = Boolean(shareLink(task.id));
+
+  const options = members.map(person => `<option value="${safe(person.display_name)}">${safe(person.display_name)}</option>`).join('');
+  const select = $('#shareRecipient');
+  select.innerHTML = `<option value="">No one in particular</option>${options}`;
+
+  // Nudge whoever owns the task, unless that is the person doing the sharing,
+  // in which case they are asking someone else to look.
+  const mine = task.assignee === currentProfile?.display_name;
+  const target = (!mine && members.find(person => person.display_name === task.assignee))
+    || members.find(person => person.display_name !== currentProfile?.display_name);
+  select.value = target ? target.display_name : '';
+
+  renderSharePreview();
+  openDialog(dialogs.share);
+}
+
+async function copyText(text) {
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch {
+    // Clipboard API needs a secure context. Fall back to a hidden textarea.
+    const scratch = document.createElement('textarea');
+    scratch.value = text;
+    scratch.setAttribute('readonly', '');
+    scratch.style.cssText = 'position:fixed;top:-1000px;opacity:0';
+    document.body.appendChild(scratch);
+    scratch.select();
+    const copied = document.execCommand('copy');
+    scratch.remove();
+    return copied;
+  }
+}
+
+/* --------------------------------------------------------------------------
    Task dialog (create and edit)
    -------------------------------------------------------------------------- */
 
@@ -852,9 +940,60 @@ function runViewAction() {
   VIEW_ACTIONS[currentView][1]();
 }
 
+function setTaskFilter(value) {
+  taskFilter = value;
+  document.querySelectorAll('.filter').forEach(button => {
+    const active = button.dataset.filter === value;
+    button.classList.toggle('active', active);
+    button.setAttribute('aria-selected', String(active));
+  });
+}
+
+/**
+ * Opens a shared link. Clears every filter first, otherwise a link to a
+ * completed or someone else's task lands on a list that does not contain it.
+ */
+function focusTask(id) {
+  showView('tasks');
+  setTaskFilter('all');
+  dueFilter = 'all';
+  searchTerm = '';
+  $('#taskSearch').value = '';
+  $('#personFilter').value = 'all';
+  $('#sortBy').value = sortBy;
+  renderTasks();
+
+  const row = document.querySelector(`#taskList .task[data-id="${id}"]`);
+  if (!row) {
+    showToast('That task is no longer in the workspace.', { type: 'error' });
+    return;
+  }
+  row.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  row.classList.add('flash');
+  setTimeout(() => row.classList.remove('flash'), 2000);
+}
+
+/** Deferred until the first load finishes, since a link can arrive cold. */
+let pendingHash = window.location.hash;
+
+function applyHash(hash) {
+  const raw = (hash || '').replace(/^#/, '');
+  if (!raw) return;
+
+  const shared = raw.match(/^task=(\d+)$/);
+  if (shared) {
+    focusTask(Number(shared[1]));
+    // Collapse to the plain view so a refresh does not re-trigger the jump.
+    history.replaceState(null, '', '#tasks');
+    return;
+  }
+  if (VIEW_TITLES[raw]) showView(raw);
+}
+
 function showView(view) {
   if (!VIEW_TITLES[view]) return;
   currentView = view;
+  if (window.location.hash !== `#${view}`) history.replaceState(null, '', `#${view}`);
 
   document.querySelectorAll('.view').forEach(section => section.classList.remove('active'));
   $(`#${view}View`).classList.add('active');
@@ -882,12 +1021,7 @@ document.addEventListener('click', async event => {
   const attention = event.target.closest('[data-due-filter]');
   if (attention) {
     dueFilter = attention.dataset.dueFilter;
-    taskFilter = 'open';
-    document.querySelectorAll('.filter').forEach(button => {
-      const active = button.dataset.filter === 'open';
-      button.classList.toggle('active', active);
-      button.setAttribute('aria-selected', String(active));
-    });
+    setTaskFilter('open');
     showView('tasks');
     renderTasks();
     return;
@@ -956,19 +1090,18 @@ document.addEventListener('click', async event => {
   if (!task) return;
 
   if (event.target.closest('.complete')) { await toggleComplete(task); return; }
+  if (event.target.closest('.share')) { openShareDialog(task); return; }
   if (event.target.closest('.edit')) { openTaskDialog(task); return; }
   if (event.target.closest('.delete')) { await removeTask(task); return; }
 });
 
 document.querySelectorAll('.filter').forEach(button => button.addEventListener('click', () => {
-  taskFilter = button.dataset.filter;
-  document.querySelectorAll('.filter').forEach(other => {
-    const active = other === button;
-    other.classList.toggle('active', active);
-    other.setAttribute('aria-selected', String(active));
-  });
+  setTaskFilter(button.dataset.filter);
   renderTasks();
 }));
+
+// A link pasted into an already-open tab.
+window.addEventListener('hashchange', () => applyHash(window.location.hash));
 
 $('#personFilter').addEventListener('change', renderTasks);
 $('#sortBy').addEventListener('change', event => { sortBy = event.target.value; renderTasks(); });
@@ -985,6 +1118,24 @@ $('#fabAdd').addEventListener('click', runViewAction);
 $('#dismissBanner').addEventListener('click', () => { $('#schemaBanner').hidden = true; });
 
 $('#taskNote').addEventListener('input', event => { $('#taskNoteCount').textContent = event.target.value.length; });
+$('#shareRecipient').addEventListener('change', renderSharePreview);
+$('#shareMessage').addEventListener('input', event => {
+  $('#shareCount').textContent = event.target.value.length;
+  renderSharePreview();
+});
+$('#shareForm').addEventListener('submit', async event => {
+  event.preventDefault();
+  const task = tasks.find(item => item.id === Number($('#shareTaskId').value));
+  if (!task) return;
+  const payload = sharePayload(task, { recipient: $('#shareRecipient').value, message: $('#shareMessage').value });
+
+  if (await copyText(payload.text)) {
+    closeDialog(dialogs.share);
+    showToast(payload.recipient ? `Copied. Paste it to ${payload.recipient} in Slack.` : 'Copied to the clipboard.');
+  } else {
+    showToast('Could not reach the clipboard. Select the preview text and copy it.', { type: 'error' });
+  }
+});
 $('#noteBody').addEventListener('input', event => { $('#noteCount').textContent = event.target.value.length; });
 
 $('#taskForm').addEventListener('submit', async event => {
@@ -1157,6 +1308,8 @@ async function startApp() {
       authScreen.hidden = true;
     appShell.hidden = false;
     await loadWorkspace();
+    applyHash(pendingHash);
+    pendingHash = '';
     schedulePoll();
   } catch (error) {
     await auth.signOut();
