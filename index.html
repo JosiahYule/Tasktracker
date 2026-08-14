@@ -75,8 +75,8 @@
         <header class="topbar">
           <div class="topbar-copy"><h1 id="pageTitle">Overview</h1><p id="pageSubtitle">Today’s work, in one place.</p></div>
           <div class="header-actions">
-            <span class="sync-status" id="syncStatus" aria-live="polite">Connecting…</span>
-            <button class="primary" id="openForm">Add task<kbd>N</kbd></button>
+            <span class="sync-status" id="syncStatus" aria-live="polite" hidden></span>
+            <button class="primary" id="primaryAction">Add task</button>
           </div>
         </header>
 
@@ -131,15 +131,11 @@
         </section>
 
         <section class="view" id="projectsView">
-          <div class="section-toolbar"><div><h2>All projects</h2><p>Create a project, then assign tasks to it.</p></div><button class="secondary" id="openProjectForm">New project</button></div>
           <div class="project-grid full" id="projectList"></div>
         </section>
 
         <section class="view" id="recurringView">
-          <div class="section-toolbar">
-            <div><h2>Schedule</h2><p>Complete an occurrence and the next one is created automatically.</p></div>
-            <button class="secondary" id="openRecurringForm">Add recurring task</button>
-          </div>
+          <p class="office-note">Complete an occurrence and the next one is scheduled automatically.</p>
           <div class="recurring-board" id="recurringList"></div>
         </section>
 

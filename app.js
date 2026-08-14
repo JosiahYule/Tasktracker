@@ -6,7 +6,14 @@ import { activityStore, auth, noteStore, profileStore, projectStore, taskStore, 
 
 let tasks = [];
 let projects = [];
+/** Everyone with a profile, including admins. */
 let people = [];
+/**
+ * The people work is actually assigned to. Admins run the workspace and see
+ * everything, but they are not part of the team roster, so they stay out of
+ * assignee menus, the sidebar, the team view, and the focus list.
+ */
+let members = [];
 let noteIndex = [];
 let currentProfile = null;
 let dataSignature = '';
@@ -34,8 +41,8 @@ const authScreen = $('#authScreen');
 const appShell = $('#appShell');
 
 const DEFAULT_PEOPLE = [
-  { id: null, display_name: 'Michaila', title: 'Controller', office: 'Halifax', accent: 'coral', active: true },
-  { id: null, display_name: 'Brady', title: 'Senior Accountant', office: 'Charlottetown', accent: 'teal', active: true }
+  { id: null, display_name: 'Michaila', role: 'member', title: 'Controller', office: 'Halifax', accent: 'coral', active: true },
+  { id: null, display_name: 'Brady', role: 'member', title: 'Senior Accountant', office: 'Charlottetown', accent: 'teal', active: true }
 ];
 
 /* --------------------------------------------------------------------------
@@ -60,8 +67,8 @@ function parseDate(value) {
 }
 
 /**
- * Turns a due date into the state the whole interface keys off: the rail
- * colour, the chip, the grouping, and the counts in the attention band.
+ * Turns a due date into the state the whole interface keys off: the chip, the
+ * grouping, and the counts in the attention band.
  */
 function dueInfo(value) {
   const date = parseDate(value);
@@ -119,10 +126,16 @@ function relativeTime(value) {
   return date.toLocaleString('en-CA', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
 }
 
+/**
+ * Only speaks up when something is wrong. A permanent "Up to date" label is
+ * noise; the absence of a warning is the same information.
+ */
 function setSyncStatus(message, state = '') {
   const indicator = $('#syncStatus');
-  indicator.textContent = message;
+  const quiet = state === 'online';
+  indicator.textContent = quiet ? '' : message;
   indicator.className = `sync-status ${state}`;
+  indicator.hidden = quiet;
 }
 
 let toastTimer = null;
@@ -249,6 +262,7 @@ async function loadWorkspace({ quiet = false } = {}) {
     projects = projectRows;
     noteIndex = noteRows;
     people = resolvePeople(profileRows, taskRows);
+    members = people.filter(person => person.role !== 'admin');
     hasLoadedOnce = true;
 
     // Skipping the re-render when nothing changed keeps hover, text selection
@@ -275,12 +289,13 @@ function resolvePeople(profileRows, taskRows) {
   const names = [...new Set([
     ...DEFAULT_PEOPLE.map(person => person.display_name),
     ...taskRows.map(task => task.assignee),
-    currentProfile?.display_name
+    // An admin is not on the roster, so their own name is not a fallback source.
+    currentProfile?.role === 'admin' ? null : currentProfile?.display_name
   ].filter(Boolean))];
 
   return names.map(name => {
     const known = active.find(profile => profile.display_name === name) || DEFAULT_PEOPLE.find(person => person.display_name === name);
-    return known || { id: null, display_name: name, title: '', office: '', accent: 'lavender', active: true };
+    return known || { id: null, display_name: name, role: 'member', title: '', office: '', accent: 'lavender', active: true };
   });
 }
 
@@ -420,7 +435,6 @@ function taskMarkup(task, { compact = false } = {}) {
   const state = task.completed ? 'none' : due.state;
 
   return `<article class="task ${task.completed ? 'done' : ''} ${compact ? 'compact' : ''}" data-id="${task.id}" data-due="${state}" data-priority="${safe(task.priority || 'normal')}">
-    <span class="task-rail" aria-hidden="true"></span>
     <button class="complete" role="checkbox" aria-checked="${task.completed}" aria-label="${task.completed ? 'Reopen' : 'Complete'} ${safe(task.name)}">✓</button>
     <div class="task-copy"><strong>${safe(task.name)}</strong><span class="task-meta">${meta}</span></div>
     <div class="task-tags"><span class="due-chip" data-state="${state}">${safe(due.label)}</span><span class="status ${safe(task.status)}">${statusLabel(task.status)}</span></div>
@@ -606,15 +620,15 @@ function renderNavCounts() {
 }
 
 function renderPeopleControls() {
-  const options = people.map(person => `<option value="${safe(person.display_name)}">${safe(person.display_name)}</option>`).join('');
+  const options = members.map(person => `<option value="${safe(person.display_name)}">${safe(person.display_name)}</option>`).join('');
 
   for (const id of ['#assignee', '#recurringAssignee']) {
     const select = $(id);
     const previous = select.value;
     select.innerHTML = options;
-    select.value = previous && people.some(person => person.display_name === previous)
+    select.value = previous && members.some(person => person.display_name === previous)
       ? previous
-      : (currentProfile?.display_name && people.some(person => person.display_name === currentProfile.display_name) ? currentProfile.display_name : select.options[0]?.value);
+      : (members.some(person => person.display_name === currentProfile?.display_name) ? currentProfile.display_name : select.options[0]?.value);
   }
 
   const personFilter = $('#personFilter');
@@ -622,7 +636,7 @@ function renderPeopleControls() {
   personFilter.innerHTML = `<option value="all">Everyone</option>${options}`;
   personFilter.value = previousPerson && [...personFilter.options].some(option => option.value === previousPerson) ? previousPerson : 'all';
 
-  $('#sidebarTeam').innerHTML = people
+  $('#sidebarTeam').innerHTML = members
     .map(person => `<div class="person">${avatar(person.display_name)}<span>${safe(person.display_name)}</span>${person.title ? `<i>${safe(person.title)}</i>` : ''}</div>`)
     .join('');
 }
@@ -662,8 +676,12 @@ function render() {
   $('#recurringList').innerHTML = recurring.length
     ? recurring.map(task => {
         const due = dueInfo(task.due);
+        // For anything more than a week out the relative label is just the date
+        // again, so say what the date means instead of repeating it.
+        const near = ['overdue', 'today', 'tomorrow', 'week'].includes(due.bucket);
+        const caption = task.paused ? 'Paused' : near ? due.label : 'Next due';
         return `<article class="recurring-item ${task.paused ? 'paused' : ''}" data-id="${task.id}" data-due="${task.paused ? 'none' : due.state}">
-          <div class="recurring-date"><strong>${dateLabel(task.due)}</strong><span>${task.paused ? 'Paused' : due.label}</span></div>
+          <div class="recurring-date"><strong>${dateLabel(task.due)}</strong><span>${caption}</span></div>
           <div class="recurring-copy"><strong>${safe(task.name)}</strong><span>${safe(task.project)} · ${frequencyLabel(task.frequency)}</span></div>
           ${avatar(task.assignee)}
           ${notesButton('task', task.id)}
@@ -673,7 +691,7 @@ function render() {
       }).join('')
     : emptyState('Nothing scheduled', 'Add the reconciliations and filings that repeat.');
 
-  $('#focusList').innerHTML = people.map(person => {
+  $('#focusList').innerHTML = members.map(person => {
     const name = person.display_name;
     const open = tasks.filter(task => !task.completed && task.assignee === name);
     const current = open.find(task => task.status === 'doing') || sortTasks(open)[0];
@@ -690,7 +708,7 @@ function render() {
     </article>`;
   }).join('');
 
-  $('#teamList').innerHTML = people.map(person => {
+  $('#teamList').innerHTML = members.map(person => {
     const name = person.display_name;
     const open = sortTasks(tasks.filter(task => !task.completed && task.assignee === name));
     return `<section class="card team-card">
@@ -806,7 +824,7 @@ function openTaskDialog(task = null) {
       $('#project').insertAdjacentHTML('afterbegin', `<option value="${safe(task.project)}">${safe(task.project)}</option>`);
     }
     $('#project').value = task.project;
-  } else if (currentProfile && people.some(person => person.display_name === currentProfile.display_name)) {
+  } else if (members.some(person => person.display_name === currentProfile?.display_name)) {
     $('#assignee').value = currentProfile.display_name;
   }
 
@@ -825,8 +843,29 @@ const VIEW_TITLES = {
   team: ['Team', 'Who is working on what, in both offices.']
 };
 
+/**
+ * One button, top right, that does whatever the current view is for. The
+ * recurring view used to carry its own "Add recurring task" button alongside a
+ * global "Add task", which left two competing ways to add work to one page.
+ */
+const VIEW_ACTIONS = {
+  overview: ['Add task', () => openTaskDialog()],
+  tasks: ['Add task', () => openTaskDialog()],
+  projects: ['New project', () => openDialog(dialogs.project)],
+  recurring: ['Add recurring task', () => openDialog(dialogs.recurring)],
+  team: ['Add task', () => openTaskDialog()]
+};
+
+let currentView = 'overview';
+
+function runViewAction() {
+  VIEW_ACTIONS[currentView][1]();
+}
+
 function showView(view) {
   if (!VIEW_TITLES[view]) return;
+  currentView = view;
+
   document.querySelectorAll('.view').forEach(section => section.classList.remove('active'));
   $(`#${view}View`).classList.add('active');
 
@@ -839,6 +878,10 @@ function showView(view) {
 
   $('#pageTitle').textContent = VIEW_TITLES[view][0];
   $('#pageSubtitle').textContent = VIEW_TITLES[view][1];
+
+  const [label] = VIEW_ACTIONS[view];
+  $('#primaryAction').textContent = label;
+  $('#fabAdd').setAttribute('aria-label', label);
   window.scrollTo({ top: 0, behavior: 'instant' });
 }
 
@@ -948,10 +991,8 @@ $('#taskSearch').addEventListener('input', event => {
   searchDebounce = setTimeout(renderTasks, 140);
 });
 
-$('#openForm').addEventListener('click', () => openTaskDialog());
-$('#fabAdd').addEventListener('click', () => openTaskDialog());
-$('#openRecurringForm').addEventListener('click', () => openDialog(dialogs.recurring));
-$('#openProjectForm').addEventListener('click', () => openDialog(dialogs.project));
+$('#primaryAction').addEventListener('click', runViewAction);
+$('#fabAdd').addEventListener('click', runViewAction);
 $('#dismissBanner').addEventListener('click', () => { $('#schemaBanner').hidden = true; });
 
 $('#taskNote').addEventListener('input', event => { $('#taskNoteCount').textContent = event.target.value.length; });
@@ -1079,9 +1120,10 @@ document.addEventListener('keydown', event => {
     showView('tasks');
     $('#taskSearch').focus();
   }
+  // Matches whatever the top-right button currently says.
   if (event.key.toLowerCase() === 'n') {
     event.preventDefault();
-    openTaskDialog();
+    runViewAction();
   }
 });
 
@@ -1089,20 +1131,23 @@ document.addEventListener('keydown', event => {
    Theme
    -------------------------------------------------------------------------- */
 
-const THEME_ORDER = ['auto', 'light', 'dark'];
-const THEME_LABELS = { auto: 'Auto theme', light: 'Light theme', dark: 'Dark theme' };
+// Light is the default rather than auto, so the workspace stays white unless
+// somebody deliberately asks for dark.
+const THEME_ORDER = ['light', 'dark', 'auto'];
+const THEME_LABELS = { light: 'Light theme', dark: 'Dark theme', auto: 'Match system' };
 
 function applyTheme(theme) {
-  if (theme === 'auto') delete document.documentElement.dataset.theme;
-  else document.documentElement.dataset.theme = theme;
+  // Always stamped, including 'auto', so the stylesheet can scope the
+  // prefers-color-scheme block to the auto case only.
+  document.documentElement.dataset.theme = theme;
   $('#themeToggleLabel').textContent = THEME_LABELS[theme];
   localStorage.setItem('tasktracker-theme', theme);
 }
 
-applyTheme(localStorage.getItem('tasktracker-theme') || 'auto');
+applyTheme(localStorage.getItem('tasktracker-theme') || 'light');
 
 $('#themeToggle').addEventListener('click', () => {
-  const current = localStorage.getItem('tasktracker-theme') || 'auto';
+  const current = localStorage.getItem('tasktracker-theme') || 'light';
   applyTheme(THEME_ORDER[(THEME_ORDER.indexOf(current) + 1) % THEME_ORDER.length]);
 });
 
