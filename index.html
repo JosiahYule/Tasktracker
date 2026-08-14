@@ -3,13 +3,20 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="Shared task workspace for the accounting team in Halifax and Charlottetown." />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="theme-color" content="#fbfaf8" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#141614" media="(prefers-color-scheme: dark)" />
     <title>Tasktracker</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%236b5fa8'/%3E%3Cpath d='M9 16.5l4.5 4.5L23 11.5' stroke='white' stroke-width='3' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="styles.css?v=10" />
+    <link rel="stylesheet" href="styles.css?v=11" />
   </head>
   <body>
+    <a class="skip-link" href="#mainContent">Skip to content</a>
+
     <section class="auth-screen" id="authScreen">
       <div class="auth-layout">
         <aside class="auth-sidebar">
@@ -17,14 +24,14 @@
           <div class="auth-preview">
             <span>SHARED WORKSPACE</span>
             <h2>Halifax and Charlottetown, working from the same list.</h2>
-            <div class="auth-people"><div><span class="avatar coral">M</span><p><strong>Michaila</strong><small>Controller · Halifax</small></p></div><div><span class="avatar teal">B</span><p><strong>Brady</strong><small>Senior Accountant · Charlottetown</small></p></div></div>
+            <p class="auth-blurb">Month-end close, recurring reconciliations, and handoffs between offices, with one due date everybody can see.</p>
           </div>
         </aside>
         <div class="auth-card">
           <div class="auth-form-heading"><span>WELCOME BACK</span><h1>Sign in</h1><p>Enter your work email to continue.</p></div>
-          <form id="loginForm">
+          <form id="loginForm" novalidate>
             <label>Email<input id="loginEmail" type="email" autocomplete="email" placeholder="name@company.ca" required /></label>
-            <label>Password<div class="password-field"><input id="loginPassword" type="password" autocomplete="current-password" required /><button type="button" id="togglePassword" aria-label="Show password">Show</button></div></label>
+            <label>Password<span class="password-field"><input id="loginPassword" type="password" autocomplete="current-password" required /><button type="button" id="togglePassword" aria-label="Show password">Show</button></span></label>
             <p class="auth-error" id="authError" role="alert"></p>
             <button class="primary auth-submit" type="submit">Sign in</button>
           </form>
@@ -32,130 +39,185 @@
         </div>
       </div>
     </section>
+
     <div class="app-shell" id="appShell" hidden>
-    <aside class="sidebar">
-      <div class="brand">Tasktracker</div>
-      <nav aria-label="Main navigation">
-        <button class="nav-item active" data-view="overview">Overview</button>
-        <button class="nav-item" data-view="tasks">My to-do list</button>
-        <button class="nav-item" data-view="projects">Projects</button>
-        <button class="nav-item" data-view="recurring">Recurring tasks</button>
-        <button class="nav-item" data-view="team">Team</button>
-      </nav>
-      <div class="people">
-        <p>TEAM</p>
-        <div><span class="avatar coral">M</span><span>Michaila</span><i>Controller</i></div>
-        <div><span class="avatar teal">B</span><span>Brady</span><i>Senior Accountant</i></div>
-      </div>
-      <div class="signed-in"><div><strong id="signedInName"></strong><span id="signedInRole"></span></div><button id="signOut">Sign out</button></div>
-    </aside>
-
-    <main>
-      <header class="topbar">
-        <div><h1 id="pageTitle">Overview</h1><p id="pageSubtitle">Today’s work, in one place.</p></div>
-        <div class="header-actions"><span class="sync-status" id="syncStatus">Connecting…</span></div>
-      </header>
-
-      <section class="view active" id="overviewView">
-        <div class="overview-grid">
-          <section class="card">
-            <div class="card-heading"><div><h2>My to-do list</h2><p id="myTasksSubtitle">Your next tasks</p></div><button class="link" data-go="tasks">All tasks</button></div>
-            <div class="task-list" id="overviewTasks"></div>
-          </section>
-          <section class="card">
-            <div class="card-heading"><div><h2>Working on now</h2><p>A quick view across both offices</p></div></div>
-            <div class="focus-list" id="focusList"></div>
-          </section>
-          <section class="card projects-card">
-            <div class="card-heading"><div><h2>Projects</h2><p>Shared work in progress</p></div><button class="link" data-go="projects">All projects</button></div>
-            <div class="project-grid" id="overviewProjects"></div>
-          </section>
-          <section class="card">
-            <div class="card-heading"><div><h2>Recurring</h2><p>Routine work coming up</p></div><button class="link" data-go="recurring">View schedule</button></div>
-            <div class="simple-list" id="overviewRecurring"></div>
-          </section>
+      <aside class="sidebar">
+        <div class="brand">Tasktracker</div>
+        <nav aria-label="Main navigation" id="mainNav">
+          <button class="nav-item active" data-view="overview" aria-current="page">Overview<span class="nav-count" id="navCountOverview" hidden></span></button>
+          <button class="nav-item" data-view="tasks">To-do list<span class="nav-count" id="navCountTasks" hidden></span></button>
+          <button class="nav-item" data-view="projects">Projects<span class="nav-count" id="navCountProjects" hidden></span></button>
+          <button class="nav-item" data-view="recurring">Recurring<span class="nav-count" id="navCountRecurring" hidden></span></button>
+          <button class="nav-item" data-view="team">Team</button>
+        </nav>
+        <div class="people">
+          <p>TEAM</p>
+          <div id="sidebarTeam"></div>
         </div>
-      </section>
-
-      <section class="view" id="tasksView">
-        <div class="toolbar">
-          <div class="filters"><button class="filter active" data-filter="open">Open</button><button class="filter" data-filter="completed">Completed</button><button class="filter" data-filter="all">All</button></div>
-          <div class="toolbar-actions"><select id="personFilter" aria-label="Filter by assignee"><option value="all">Everyone</option><option>Michaila</option><option>Brady</option></select><button class="primary" id="openForm">Add task</button></div>
+        <div class="sidebar-footer">
+          <button class="theme-toggle" id="themeToggle" aria-label="Switch colour theme"><span id="themeToggleLabel">Auto</span></button>
+          <div class="signed-in">
+            <div><strong id="signedInName"></strong><span id="signedInRole"></span></div>
+            <button id="signOut">Sign out</button>
+          </div>
         </div>
-        <div class="card"><div class="task-list" id="taskList"></div></div>
-      </section>
+      </aside>
 
-      <section class="view" id="projectsView">
-        <div class="section-toolbar"><div><h2>All projects</h2><p>Create a project, then assign tasks to it.</p></div><button class="secondary" id="openProjectForm">New project</button></div>
-        <div class="project-grid full" id="projectList"></div>
-      </section>
-
-      <section class="view" id="recurringView">
-        <div class="recurring-toolbar">
-          <div><h2>Schedule</h2><p>Complete an occurrence and the next one is created automatically.</p></div>
-          <button class="secondary" id="openRecurringForm">Add recurring task</button>
+      <main id="mainContent">
+        <div class="banner" id="schemaBanner" role="alert" hidden>
+          <div>
+            <strong>The database is behind this version of the app.</strong>
+            <p>Open the Supabase SQL Editor, paste all of <code>supabase-schema.sql</code>, and run it. Your data is not affected.</p>
+          </div>
+          <button type="button" id="dismissBanner" aria-label="Dismiss">×</button>
         </div>
-        <div class="recurring-board" id="recurringList"></div>
-      </section>
 
-      <section class="view" id="teamView">
-        <div class="office-note">Halifax and Charlottetown are in the same time zone. Updates below are shared immediately.</div>
-        <div class="team-grid" id="teamList"></div>
-      </section>
-    </main>
+        <header class="topbar">
+          <div class="topbar-copy"><h1 id="pageTitle">Overview</h1><p id="pageSubtitle">Today’s work, in one place.</p></div>
+          <div class="header-actions">
+            <span class="sync-status" id="syncStatus" aria-live="polite">Connecting…</span>
+            <button class="primary" id="openForm">Add task<kbd>N</kbd></button>
+          </div>
+        </header>
 
-    <dialog id="taskDialog">
+        <section class="view active" id="overviewView">
+          <!-- Deliberately breaks the card grid and bleeds to the page edge: this
+               band is a page-level alert, not one card among several. -->
+          <div class="attention-band" id="attentionBand" role="group" aria-label="Jump to work needing attention"></div>
+
+          <div class="overview-grid">
+            <section class="card">
+              <div class="card-heading"><div><h2>Your next tasks</h2><p id="myTasksSubtitle">Sorted by due date</p></div><button class="link" data-go="tasks">All tasks</button></div>
+              <div class="task-list" id="overviewTasks"></div>
+            </section>
+            <section class="card">
+              <div class="card-heading"><div><h2>Working on now</h2><p>A quick view across both offices</p></div></div>
+              <div class="focus-list" id="focusList"></div>
+            </section>
+            <section class="card projects-card">
+              <div class="card-heading"><div><h2>Projects</h2><p>Shared work in progress</p></div><button class="link" data-go="projects">All projects</button></div>
+              <div class="project-grid" id="overviewProjects"></div>
+            </section>
+            <section class="card recurring-preview-card">
+              <div class="card-heading"><div><h2>Recurring</h2><p>Routine work coming up</p></div><button class="link" data-go="recurring">View schedule</button></div>
+              <div class="simple-list" id="overviewRecurring"></div>
+            </section>
+          </div>
+        </section>
+
+        <section class="view" id="tasksView">
+          <div class="toolbar">
+            <div class="filters" role="tablist" aria-label="Task status filter">
+              <button class="filter active" data-filter="open" role="tab" aria-selected="true">Open</button>
+              <button class="filter" data-filter="completed" role="tab" aria-selected="false">Completed</button>
+              <button class="filter" data-filter="all" role="tab" aria-selected="false">All</button>
+            </div>
+            <div class="toolbar-actions">
+              <div class="search-field">
+                <input id="taskSearch" type="search" placeholder="Search tasks" aria-label="Search tasks" />
+                <kbd>/</kbd>
+              </div>
+              <select id="personFilter" aria-label="Filter by assignee"><option value="all">Everyone</option></select>
+              <select id="sortBy" aria-label="Sort tasks">
+                <option value="due">Due date</option>
+                <option value="priority">Priority</option>
+                <option value="name">Name</option>
+                <option value="created">Recently added</option>
+              </select>
+            </div>
+          </div>
+          <div class="active-filters" id="activeFilters" hidden></div>
+          <div class="card"><div class="task-list grouped" id="taskList"></div></div>
+        </section>
+
+        <section class="view" id="projectsView">
+          <div class="section-toolbar"><div><h2>All projects</h2><p>Create a project, then assign tasks to it.</p></div><button class="secondary" id="openProjectForm">New project</button></div>
+          <div class="project-grid full" id="projectList"></div>
+        </section>
+
+        <section class="view" id="recurringView">
+          <div class="section-toolbar">
+            <div><h2>Schedule</h2><p>Complete an occurrence and the next one is created automatically.</p></div>
+            <button class="secondary" id="openRecurringForm">Add recurring task</button>
+          </div>
+          <div class="recurring-board" id="recurringList"></div>
+        </section>
+
+        <section class="view" id="teamView">
+          <p class="office-note">Halifax and Charlottetown share a time zone. Everything below updates for both offices within a few seconds.</p>
+          <div class="team-grid" id="teamList"></div>
+        </section>
+      </main>
+
+      <button class="fab" id="fabAdd" aria-label="Add task">+</button>
+    </div>
+
+    <dialog id="taskDialog" aria-labelledby="taskDialogTitle">
       <form id="taskForm">
-        <div class="dialog-heading"><h2>Add a task</h2><button type="button" class="icon" id="closeForm" aria-label="Close">×</button></div>
-        <label>Task<input id="taskName" required placeholder="What needs to be done?" /></label>
+        <div class="dialog-heading"><h2 id="taskDialogTitle">Add a task</h2><button type="button" class="icon" data-close="taskDialog" aria-label="Close">×</button></div>
+        <input id="taskId" type="hidden" />
+        <label>Task<input id="taskName" required maxlength="200" placeholder="What needs to be done?" /></label>
         <div class="field-row">
-          <label>Assigned to<select id="assignee"><option>Michaila</option><option>Brady</option></select></label>
+          <label>Assigned to<select id="assignee"></select></label>
           <label>Due date<input id="dueDate" type="date" /></label>
         </div>
-        <div class="field-row"><label>Project<select id="project"><option>Month-end close</option><option>FY26 planning</option><option>Systems review</option><option>General</option></select></label><label>Status<select id="status"><option value="todo">To do</option><option value="doing">In progress</option><option value="waiting">Waiting</option></select></label></div>
-        <p class="form-help">For work that repeats, use the Recurring tasks schedule instead.</p>
-        <div class="actions"><button type="button" id="cancelForm">Cancel</button><button type="submit" class="primary">Add task</button></div>
+        <div class="field-row">
+          <label>Project<select id="project"></select></label>
+          <label>Priority<select id="priority"><option value="low">Low</option><option value="normal" selected>Normal</option><option value="high">High</option></select></label>
+        </div>
+        <label>Status<select id="status"><option value="todo">To do</option><option value="doing">In progress</option><option value="waiting">Waiting</option></select></label>
+        <label class="note-entry">Handoff note<textarea id="taskNote" maxlength="400" placeholder="Short context for whoever picks this up (optional)"></textarea><small><span id="taskNoteCount">0</span>/400</small></label>
+        <p class="form-help" id="taskFormHelp">For work that repeats, use the Recurring tasks schedule instead.</p>
+        <div class="actions"><button type="button" data-close="taskDialog">Cancel</button><button type="submit" class="primary" id="taskSubmit">Add task</button></div>
       </form>
     </dialog>
-    <dialog id="projectDialog">
+
+    <dialog id="projectDialog" aria-labelledby="projectDialogTitle">
       <form id="projectForm">
-        <div class="dialog-heading"><h2>New project</h2><button type="button" class="icon" data-close-project aria-label="Close">×</button></div>
+        <div class="dialog-heading"><h2 id="projectDialogTitle">New project</h2><button type="button" class="icon" data-close="projectDialog" aria-label="Close">×</button></div>
         <label>Project name<input id="projectName" required maxlength="80" placeholder="e.g. Year-end audit" /></label>
         <label>Description<textarea id="projectDescription" required maxlength="160" placeholder="What is this project for?"></textarea></label>
         <div class="field-row"><label>Due date<input id="projectDueDate" type="date" required /></label><label>Colour<select id="projectColor"><option value="coral">Peach</option><option value="blue">Blue</option><option value="teal">Mint</option><option value="lavender">Lavender</option></select></label></div>
-        <div class="actions"><button type="button" data-close-project>Cancel</button><button type="submit" class="primary">Create project</button></div>
+        <div class="actions"><button type="button" data-close="projectDialog">Cancel</button><button type="submit" class="primary">Create project</button></div>
       </form>
     </dialog>
-    <dialog id="recurringDialog">
+
+    <dialog id="recurringDialog" aria-labelledby="recurringDialogTitle">
       <form id="recurringForm">
-        <div class="dialog-heading"><h2>Add recurring task</h2><button type="button" class="icon" data-close-recurring aria-label="Close">×</button></div>
-        <label>Task<input id="recurringName" required placeholder="e.g. Reconcile operating account" /></label>
-        <div class="field-row"><label>Assigned to<select id="recurringAssignee"><option>Michaila</option><option>Brady</option></select></label><label>Project<select id="recurringProject"><option>Month-end close</option><option>FY26 planning</option><option>Systems review</option><option>General</option></select></label></div>
+        <div class="dialog-heading"><h2 id="recurringDialogTitle">Add recurring task</h2><button type="button" class="icon" data-close="recurringDialog" aria-label="Close">×</button></div>
+        <label>Task<input id="recurringName" required maxlength="200" placeholder="e.g. Reconcile operating account" /></label>
+        <div class="field-row"><label>Assigned to<select id="recurringAssignee"></select></label><label>Project<select id="recurringProject"></select></label></div>
         <div class="field-row"><label>Repeats<select id="frequency"><option value="weekly">Weekly</option><option value="monthly" selected>Monthly</option><option value="quarterly">Quarterly</option><option value="yearly">Yearly</option></select></label><label>First due date<input id="recurringDueDate" type="date" required /></label></div>
-        <p class="form-help">The next due date will be scheduled only after this occurrence is completed.</p>
-        <div class="actions"><button type="button" data-close-recurring>Cancel</button><button type="submit" class="primary">Add to schedule</button></div>
+        <p class="form-help">The next due date is scheduled only after this occurrence is completed.</p>
+        <div class="actions"><button type="button" data-close="recurringDialog">Cancel</button><button type="submit" class="primary">Add to schedule</button></div>
       </form>
     </dialog>
-    <dialog id="updateDialog">
-      <form id="updateForm">
-        <div class="dialog-heading"><div><h2>Share an update</h2><p id="updateTaskName"></p></div><button type="button" class="icon" data-close-update aria-label="Close">×</button></div>
-        <input id="updateTaskId" type="hidden" />
-        <label>Status<select id="updateStatus"><option value="todo">To do</option><option value="doing">In progress</option><option value="waiting">Waiting</option></select></label>
-        <label>Note<textarea id="updateNote" maxlength="180" placeholder="Add a short note for the other person (optional)"></textarea></label>
-        <div class="actions"><button type="button" data-close-update>Cancel</button><button type="submit" class="primary">Share update</button></div>
-      </form>
-    </dialog>
-    <dialog id="notesDialog" class="notes-dialog">
+
+    <dialog id="notesDialog" class="notes-dialog" aria-labelledby="notesDialogTitle">
       <form id="noteForm">
-        <div class="dialog-heading"><div><h2>Notes</h2><p id="notesEntityName"></p></div><button type="button" class="icon" data-close-notes aria-label="Close">×</button></div>
+        <div class="dialog-heading"><div><h2 id="notesDialogTitle">Notes</h2><p id="notesEntityName"></p></div><button type="button" class="icon" data-close="notesDialog" aria-label="Close">×</button></div>
         <input id="noteEntityType" type="hidden" /><input id="noteEntityId" type="hidden" />
+        <div class="notes-tabs" role="tablist" aria-label="Notes and history">
+          <button type="button" class="notes-tab active" data-tab="notes" role="tab" aria-selected="true">Notes</button>
+          <button type="button" class="notes-tab" data-tab="history" role="tab" aria-selected="false">History</button>
+        </div>
         <div class="notes-list" id="notesList"></div>
-        <label class="note-entry">Add a note<textarea id="noteBody" required maxlength="1000" placeholder="Share context, a decision, or a handoff..."></textarea><small><span id="noteCount">0</span>/1000</small></label>
-        <div class="actions"><button type="button" data-close-notes>Cancel</button><button type="submit" class="primary">Post note</button></div>
+        <div class="notes-list" id="historyList" hidden></div>
+        <label class="note-entry" id="noteEntry">Add a note<textarea id="noteBody" required maxlength="1000" placeholder="Share context, a decision, or a handoff…"></textarea><small><span id="noteCount">0</span>/1000</small></label>
+        <div class="actions" id="noteActions"><button type="button" data-close="notesDialog">Close</button><button type="submit" class="primary">Post note</button></div>
       </form>
     </dialog>
-    <div class="toast" id="toast" role="status" aria-live="polite"></div>
-    <script type="module" src="app.js?v=10"></script>
-    </div>
+
+    <dialog id="confirmDialog" aria-labelledby="confirmTitle">
+      <div class="confirm-body">
+        <div class="dialog-heading"><h2 id="confirmTitle">Are you sure?</h2></div>
+        <p id="confirmMessage"></p>
+        <div class="actions"><button type="button" id="confirmCancel">Cancel</button><button type="button" class="danger" id="confirmAccept">Delete</button></div>
+      </div>
+    </dialog>
+
+    <div class="toast" id="toast" role="status" aria-live="polite"><span id="toastMessage"></span><button type="button" id="toastAction" hidden>Undo</button></div>
+
+    <script type="module" src="app.js?v=11"></script>
   </body>
 </html>
