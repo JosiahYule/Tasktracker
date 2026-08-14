@@ -306,14 +306,13 @@ kbd {
    No boxes. Structure comes from headings, whitespace and hairline dividers.
    --------------------------------------------------------------------------- */
 
-.overview-grid { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(290px, 1fr); gap: 40px 44px; align-items: start; }
-.projects-card, .recurring-preview-card { grid-column: 1 / -1; }
+.projects-card { margin-top: 46px; }
 /* Task rows reflow against the section holding them rather than the viewport,
    so a narrow team column stacks while the full-width list stays on one line. */
 .card { min-width: 0; container-type: inline-size; }
-.card-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 14px; }
+.card-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; margin-bottom: 14px; }
 .card-heading h2, .team-heading h2 { margin: 0 0 3px; font-size: 1.0625rem; letter-spacing: -.35px; }
-.card-heading p, .team-heading p { margin: 0; color: var(--ink-3); font-size: .8125rem; }
+.team-heading p { margin: 0; color: var(--ink-3); font-size: .8125rem; }
 .link { border: 0; padding: 4px; background: transparent; color: var(--accent); font-size: .8125rem; font-weight: 600; white-space: nowrap; }
 
 /* ---------------------------------------------------------------------------
@@ -323,7 +322,7 @@ kbd {
    it does not compete with the deadline colours.
    --------------------------------------------------------------------------- */
 
-.task-list, .focus-list, .simple-list, .recurring-board { display: grid; border-top: 1px solid var(--line); }
+.task-list, .recurring-board { display: grid; border-top: 1px solid var(--line); }
 .task-list.grouped { border-top: 0; }
 
 .group-label {
@@ -356,21 +355,17 @@ kbd {
 .task-copy { min-width: 0; display: grid; gap: 4px; }
 .task-copy strong { overflow: hidden; font-size: .875rem; font-weight: 500; text-overflow: ellipsis; white-space: nowrap; }
 .task[data-priority='high'] .task-copy strong { font-weight: 700; }
-.task[data-priority='high'] .task-copy strong::before { content: '▲ '; color: #c08475; font-size: .625rem; vertical-align: 1px; }
-.task[data-priority='low'] .task-copy strong { color: var(--ink-2); }
 .task.done .task-copy strong { color: var(--ink-3); text-decoration: line-through; }
 .task-meta { overflow: hidden; color: var(--ink-3); font-size: .75rem; text-overflow: ellipsis; white-space: nowrap; }
 .task-note { grid-column: 2 / -1; margin: 2px 0 0; color: var(--ink-3); font-size: .75rem; line-height: 1.5; }
 
-.due-chip {
-  border-radius: 999px; padding: 4px 11px;
-  background: var(--calm-soft); color: var(--ink-3);
-  font-size: .75rem; font-weight: 600; white-space: nowrap;
-}
+/* Filled only when the date demands action today. A pill on every row made the
+   colour decorative, so it stopped meaning anything. */
+.due-chip { color: var(--ink-3); font-size: .75rem; white-space: nowrap; }
+.due-chip[data-state='overdue'],
+.due-chip[data-state='today'] { border-radius: 999px; padding: 4px 11px; font-weight: 600; }
 .due-chip[data-state='overdue'] { background: var(--overdue-soft); color: var(--overdue); }
 .due-chip[data-state='today'] { background: var(--today-soft); color: var(--today); }
-.due-chip[data-state='soon'] { background: var(--soon-soft); color: var(--soon); }
-.due-chip[data-state='none'] { background: transparent; color: var(--ink-3); font-weight: 400; padding-left: 0; }
 
 .status { font-size: .75rem; white-space: nowrap; }
 .status.todo { color: var(--ink-3); }
@@ -378,6 +373,16 @@ kbd {
 .status.waiting { color: var(--today); font-weight: 600; }
 
 .task-tools { display: flex; align-items: center; gap: 2px; }
+
+/* Row controls appear on hover, so ten rows read as ten tasks rather than
+   thirty buttons. Space is reserved either way, so nothing shifts. Touch
+   devices, which have no hover, keep them on permanently. */
+@media (hover: hover) {
+  .task-tools > * { opacity: 0; transition: opacity .12s; }
+  .task-tools > .notes-button.has-notes { opacity: 1; }
+  .task:hover .task-tools > *,
+  .task:focus-within .task-tools > * { opacity: 1; }
+}
 .notes-button, .edit {
   display: inline-flex; align-items: center; gap: 4px;
   border: 0; border-radius: 7px; padding: 5px 8px;
@@ -399,15 +404,6 @@ kbd {
 /* ---------------------------------------------------------------------------
    Focus, projects, recurring
    --------------------------------------------------------------------------- */
-
-.focus { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: start; gap: 12px; padding: 16px 4px; border-bottom: 1px solid var(--line); }
-.focus:last-child { border-bottom: 0; }
-.focus-copy { min-width: 0; display: grid; gap: 3px; }
-.focus-copy strong { display: flex; align-items: baseline; gap: 7px; font-size: .875rem; }
-.focus-copy strong small { color: var(--ink-3); font-size: .6875rem; font-weight: 400; }
-.focus-copy > span { overflow: hidden; color: var(--ink-2); font-size: .8125rem; text-overflow: ellipsis; white-space: nowrap; }
-.focus-copy p { margin: 4px 0 0; color: var(--ink-3); font-size: .75rem; line-height: 1.5; }
-.focus > i { color: var(--ink-3); font-size: .75rem; font-style: normal; white-space: nowrap; }
 
 .project-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
 .project-grid.full { grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); }
@@ -433,12 +429,6 @@ kbd {
 :root[data-theme='dark'] .progress-ring { background: conic-gradient(var(--ring) calc(var(--progress) * 1%), rgb(255 255 255 / 10%) 0); }
 .progress-ring::before { content: ''; grid-area: 1 / 1; width: 52px; height: 52px; border-radius: 50%; background: var(--surface); }
 .progress-ring span { z-index: 1; grid-area: 1 / 1; font-size: .8125rem; font-weight: 700; }
-
-.simple-item { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 12px; padding: 13px 4px; border-bottom: 1px solid var(--line); }
-.simple-item:last-child { border-bottom: 0; }
-.simple-item div { min-width: 0; display: grid; gap: 3px; }
-.simple-item strong { overflow: hidden; font-size: .875rem; font-weight: 500; text-overflow: ellipsis; white-space: nowrap; }
-.simple-item span { color: var(--ink-3); font-size: .75rem; }
 
 .recurring-item {
   display: grid; grid-template-columns: 116px minmax(0, 1fr) auto auto auto auto;
@@ -570,8 +560,6 @@ input:hover, select:hover, textarea:hover { border-color: var(--ink-3); }
    --------------------------------------------------------------------------- */
 
 @media (max-width: 1180px) {
-  .overview-grid { grid-template-columns: 1fr; gap: 34px; }
-  .projects-card { grid-column: auto; }
   .project-grid { grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); }
   main { padding-right: 30px; }
 }

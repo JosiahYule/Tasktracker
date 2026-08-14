@@ -23,7 +23,7 @@ Then visit `http://localhost:4173`.
 - Team view showing each person's open work
 - Threaded notes on tasks and projects, plus a per-task history of who changed what
 - Light, dark, and automatic colour themes
-- Keyboard shortcuts: `N` to add a task, `/` to search
+- Keyboard shortcuts: `N` for the current page's action, `/` to search
 - Shared Supabase persistence with background sync
 
 ## Supabase setup
@@ -53,6 +53,10 @@ after pulling changes.
 Create their Supabase user, insert one row into `public.profiles`, and they appear in
 the assignee menus, the sidebar, the team view, and the person filter. No code change
 is needed. `accent` accepts `coral`, `teal`, `blue`, `lavender`, `amber`, or `rose`.
+
+Profiles with `role = 'admin'` are deliberately left off that roster. An admin sees
+every task in the workspace and can delete permanently, but work is not assigned to
+them and they do not appear in the team list.
 
 ### If the app shows "The database is behind this version of the app"
 
