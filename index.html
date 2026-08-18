@@ -12,31 +12,22 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="styles.css?v=11" />
+    <link rel="stylesheet" href="styles.css?v=12" />
   </head>
   <body>
     <a class="skip-link" href="#mainContent">Skip to content</a>
 
     <section class="auth-screen" id="authScreen">
-      <div class="auth-layout">
-        <aside class="auth-sidebar">
-          <div class="auth-brand">Tasktracker</div>
-          <div class="auth-preview">
-            <span>SHARED WORKSPACE</span>
-            <h2>Halifax and Charlottetown, working from the same list.</h2>
-            <p class="auth-blurb">Month-end close, recurring reconciliations, and handoffs between offices, with one due date everybody can see.</p>
-          </div>
-        </aside>
-        <div class="auth-card">
-          <div class="auth-form-heading"><span>WELCOME BACK</span><h1>Sign in</h1><p>Enter your work email to continue.</p></div>
-          <form id="loginForm" novalidate>
-            <label>Email<input id="loginEmail" type="email" autocomplete="email" placeholder="name@company.ca" required /></label>
-            <label>Password<span class="password-field"><input id="loginPassword" type="password" autocomplete="current-password" required /><button type="button" id="togglePassword" aria-label="Show password">Show</button></span></label>
-            <p class="auth-error" id="authError" role="alert"></p>
-            <button class="primary auth-submit" type="submit">Sign in</button>
-          </form>
-          <p class="auth-help">Having trouble signing in? Contact the workspace administrator.</p>
-        </div>
+      <div class="auth-card">
+        <div class="auth-brand">Tasktracker</div>
+        <div class="auth-form-heading"><h1>Sign in</h1><p>Enter your work email to continue.</p></div>
+        <form id="loginForm" novalidate>
+          <label>Email<input id="loginEmail" type="email" autocomplete="email" placeholder="name@company.ca" required /></label>
+          <label>Password<span class="password-field"><input id="loginPassword" type="password" autocomplete="current-password" required /><button type="button" id="togglePassword" aria-label="Show password">Show</button></span></label>
+          <p class="auth-error" id="authError" role="alert"></p>
+          <button class="primary auth-submit" type="submit">Sign in</button>
+        </form>
+        <p class="auth-help">Having trouble signing in? Contact the workspace administrator.</p>
       </div>
     </section>
 

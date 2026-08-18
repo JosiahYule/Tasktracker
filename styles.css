@@ -145,21 +145,11 @@ button { cursor: pointer; }
 
 .auth-screen { min-height: 100vh; display: grid; place-items: center; padding: 24px; background: var(--bg); }
 .auth-screen[hidden], .app-shell[hidden] { display: none; }
-.auth-layout {
-  width: min(940px, 100%); min-height: 560px;
-  display: grid; grid-template-columns: 0.85fr 1fr;
-  overflow: hidden; border-radius: 20px; background: var(--surface);
-}
-.auth-sidebar { display: flex; flex-direction: column; padding: 44px; background: var(--lavender); }
-.auth-brand { font-size: 1.125rem; font-weight: 700; letter-spacing: -.5px; }
-.auth-preview { margin: auto 0; }
-.auth-preview > span, .auth-form-heading > span { color: var(--accent); font-size: .6875rem; font-weight: 700; letter-spacing: 1.4px; }
-.auth-preview h2 { max-width: 340px; margin: 16px 0 18px; font-size: 1.75rem; line-height: 1.22; letter-spacing: -.9px; }
-.auth-blurb { max-width: 330px; margin: 0; color: var(--ink-2); font-size: .8125rem; line-height: 1.6; }
-.auth-card { display: flex; flex-direction: column; justify-content: center; padding: 56px; background: var(--surface); }
-.auth-form-heading { margin-bottom: 28px; }
-.auth-card h1 { margin: 10px 0 8px; font-size: 1.75rem; letter-spacing: -.8px; }
-.auth-card > p { margin: 0; color: var(--ink-3); font-size: .875rem; }
+.auth-card { width: min(360px, 100%); display: flex; flex-direction: column; }
+.auth-brand { margin-bottom: 32px; font-size: 1.125rem; font-weight: 700; letter-spacing: -.5px; }
+.auth-form-heading { margin-bottom: 24px; }
+.auth-card h1 { margin: 0 0 8px; font-size: 1.5rem; letter-spacing: -.8px; }
+.auth-form-heading p { margin: 0; color: var(--ink-3); font-size: .875rem; }
 .auth-card form { padding: 0; }
 .auth-submit { width: 100%; margin-top: 6px; justify-content: center; }
 .auth-error { min-height: 20px; margin: -6px 0 10px; color: var(--overdue); font-size: .8125rem; }
@@ -569,10 +559,6 @@ input:hover, select:hover, textarea:hover { border-color: var(--ink-3); }
 }
 
 @media (max-width: 780px) {
-  .auth-layout { min-height: 0; grid-template-columns: 1fr; }
-  .auth-sidebar { display: none; }
-  .auth-card { padding: 36px 26px; }
-
   .sidebar { position: static; width: auto; padding: 16px 14px 10px; }
   .brand { margin-bottom: 14px; }
   .sidebar nav { display: flex; gap: 4px; overflow-x: auto; scrollbar-width: none; }
