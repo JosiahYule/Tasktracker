@@ -12,7 +12,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="styles.css?v=14" />
+    <link rel="stylesheet" href="styles.css?v=15" />
   </head>
   <body>
     <a class="skip-link" href="#mainContent">Skip to content</a>
@@ -157,15 +157,26 @@
         <label>Task<input id="taskName" required maxlength="200" placeholder="What needs to be done?" /></label>
         <div class="field-row">
           <label>Assigned to<select id="assignee"></select></label>
-          <label>Due date<input id="dueDate" type="date" /></label>
+          <label><span id="dueDateLabel">Due date</span><input id="dueDate" type="date" /></label>
         </div>
         <div class="field-row">
           <label>Project<select id="project"></select></label>
           <label>Priority<select id="priority"><option value="low">Low</option><option value="normal" selected>Normal</option><option value="high">High</option></select></label>
         </div>
         <label>Status<select id="status"><option value="todo">To do</option><option value="doing">In progress</option><option value="waiting">Waiting</option></select></label>
+        <div class="repeat-block">
+          <label class="switch-row"><input type="checkbox" id="taskRecurring" /><span>This task repeats</span></label>
+          <div class="field-row" id="repeatFields" hidden>
+            <label>Repeats<select id="taskFrequency">
+              <option value="weekly">Weekly</option>
+              <option value="monthly" selected>Monthly</option>
+              <option value="quarterly">Quarterly</option>
+              <option value="yearly">Yearly</option>
+            </select></label>
+            <p class="repeat-note">The next occurrence is scheduled when you complete this one.</p>
+          </div>
+        </div>
         <label class="note-entry">Handoff note<textarea id="taskNote" maxlength="400" placeholder="Short context for whoever picks this up (optional)"></textarea><small><span id="taskNoteCount">0</span>/400</small></label>
-        <p class="form-help" id="taskFormHelp">For work that repeats, use the Recurring tasks schedule instead.</p>
         <div class="actions"><button type="button" data-close="taskDialog">Cancel</button><button type="submit" class="primary" id="taskSubmit">Add task</button></div>
       </form>
     </dialog>
@@ -177,17 +188,6 @@
         <label>Description<textarea id="projectDescription" required maxlength="160" placeholder="What is this project for?"></textarea></label>
         <div class="field-row"><label>Due date<input id="projectDueDate" type="date" required /></label><label>Colour<select id="projectColor"><option value="coral">Peach</option><option value="blue">Blue</option><option value="teal">Mint</option><option value="lavender">Lavender</option></select></label></div>
         <div class="actions"><button type="button" data-close="projectDialog">Cancel</button><button type="submit" class="primary">Create project</button></div>
-      </form>
-    </dialog>
-
-    <dialog id="recurringDialog" aria-labelledby="recurringDialogTitle">
-      <form id="recurringForm">
-        <div class="dialog-heading"><h2 id="recurringDialogTitle">Add recurring task</h2><button type="button" class="icon" data-close="recurringDialog" aria-label="Close">×</button></div>
-        <label>Task<input id="recurringName" required maxlength="200" placeholder="e.g. Reconcile operating account" /></label>
-        <div class="field-row"><label>Assigned to<select id="recurringAssignee"></select></label><label>Project<select id="recurringProject"></select></label></div>
-        <div class="field-row"><label>Repeats<select id="frequency"><option value="weekly">Weekly</option><option value="monthly" selected>Monthly</option><option value="quarterly">Quarterly</option><option value="yearly">Yearly</option></select></label><label>First due date<input id="recurringDueDate" type="date" required /></label></div>
-        <p class="form-help">The next due date is scheduled only after this occurrence is completed.</p>
-        <div class="actions"><button type="button" data-close="recurringDialog">Cancel</button><button type="submit" class="primary">Add to schedule</button></div>
       </form>
     </dialog>
 
@@ -230,6 +230,6 @@
 
     <div class="toast" id="toast" role="status" aria-live="polite"><span id="toastMessage"></span><button type="button" id="toastAction" hidden>Undo</button></div>
 
-    <script type="module" src="app.js?v=14"></script>
+    <script type="module" src="app.js?v=15"></script>
   </body>
 </html>

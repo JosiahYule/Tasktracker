@@ -4,6 +4,38 @@ What was wrong, what changed, and what is still open.
 
 ---
 
+# Fourth pass: editing a repeating task
+
+A recurring task could be created and deleted but never changed. Getting the frequency
+wrong, or needing to move the next due date, meant deleting the schedule entry and
+retyping it.
+
+The obvious fix was to make the recurring dialog editable, but that would have left two
+dialogs editing the same row with different field sets: edit from the schedule and you
+could change the frequency but not the priority, status or handoff note; edit the same
+task from the to-do list — where it already appeared, with an Edit button — and you got
+the opposite. So the repeat controls moved into the one dialog that edits a task, and the
+create-only `#recurringDialog` was retired. The change is a net deletion.
+
+- The schedule's rows gained the **Edit** control every other row already had.
+- **This task repeats** and the frequency now live in the task dialog, shown only when
+  they apply. The due date is relabelled **Next due date** and stops being optional while
+  the box is ticked, because a repeating task needs a date to count forward from.
+- A one-off can be put on the schedule, and a repeating task taken off it, with that
+  checkbox. Turning repeats back on clears `recurrence_generated`, which the last
+  completion set — otherwise the schedule would never produce another occurrence.
+- **Add recurring task** on the schedule opens the same dialog with the box already
+  ticked, so there is one form to learn rather than two.
+
+Three tests cover it: editing frequency from the schedule, converting a task in both
+directions, and the pre-ticked create path.
+
+One thing found while building it: `.repeat-block select { background: … }` used the
+shorthand, which wiped the `background-image` that draws a select's chevron. Caught in a
+screenshot rather than in the code.
+
+---
+
 # Third pass: accounts and polish
 
 ## Account creation

@@ -650,6 +650,24 @@ input:focus, select:focus, textarea:focus {
 :where(input, select, textarea):focus-visible { outline: none; }
 .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .form-help { margin: -2px 0 16px; border-radius: 8px; padding: 11px 13px; background: var(--surface-2); color: var(--ink-3); font-size: .75rem; line-height: 1.55; }
+
+/* Repeat controls sit in a tinted well so the dialog reads as "a task, and
+   optionally a schedule" rather than as one long column of equal fields. */
+.repeat-block { margin-bottom: 15px; border-radius: 10px; padding: 12px 13px; background: var(--surface-2); }
+.repeat-block .field-row { margin-top: 12px; align-items: end; }
+.repeat-block label { margin: 0; }
+/* background-color, not the shorthand: the shorthand would wipe the
+   background-image that draws the select's chevron. */
+.repeat-block select { background-color: var(--surface); }
+.switch-row {
+  display: flex; align-items: center; gap: 10px; margin: 0;
+  color: var(--ink); font-size: .8125rem; font-weight: 600; cursor: pointer;
+}
+.switch-row input {
+  width: 17px; height: 17px; flex: 0 0 auto; margin: 0; padding: 0;
+  accent-color: var(--accent); cursor: pointer;
+}
+.repeat-note { margin: 0 0 11px; color: var(--ink-3); font-size: .75rem; line-height: 1.45; }
 .actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 22px; }
 .actions > button:not(.primary):not(.danger) { border: 0; border-radius: 9px; padding: 10px 14px; background: transparent; color: var(--ink-2); font-size: .875rem; font-weight: 500; }
 .actions > button:not(.primary):not(.danger):hover { background: var(--surface-2); }

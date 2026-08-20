@@ -31,10 +31,12 @@ let pollTimer = null;
 
 const $ = selector => document.querySelector(selector);
 
+// The recurring schedule used to carry its own create-only form. A repeating
+// task is still a task, so it is created and edited in the same dialog as any
+// other one, with the repeat controls shown when they apply.
 const dialogs = {
   task: $('#taskDialog'),
   project: $('#projectDialog'),
-  recurring: $('#recurringDialog'),
   notes: $('#notesDialog'),
   account: $('#accountDialog'),
   confirm: $('#confirmDialog')
@@ -724,14 +726,13 @@ function renderNavCounts() {
 function renderPeopleControls() {
   const options = members.map(person => `<option value="${safe(person.display_name)}">${safe(person.display_name)}</option>`).join('');
 
-  for (const id of ['#assignee', '#recurringAssignee']) {
-    const select = $(id);
-    const previous = select.value;
-    select.innerHTML = options;
-    select.value = previous && members.some(person => person.display_name === previous)
-      ? previous
-      : (members.some(person => person.display_name === currentProfile?.display_name) ? currentProfile.display_name : select.options[0]?.value);
-  }
+  const assignee = $('#assignee');
+  const previousAssignee = assignee.value;
+  assignee.innerHTML = options;
+  // Keep whoever was selected, otherwise default to the person signing in.
+  assignee.value = previousAssignee && members.some(person => person.display_name === previousAssignee)
+    ? previousAssignee
+    : (members.some(person => person.display_name === currentProfile?.display_name) ? currentProfile.display_name : assignee.options[0]?.value);
 
   const personFilter = $('#personFilter');
   const previousPerson = personFilter.value;
@@ -760,13 +761,10 @@ function render() {
     ? projects.map(projectMarkup).join('')
     : emptyState('No projects yet', 'Create a project, then assign tasks to it.');
 
-  const projectOptions = `${projects.map(project => `<option value="${safe(project.name)}">${safe(project.name)}</option>`).join('')}<option value="General">General</option>`;
-  for (const id of ['#project', '#recurringProject']) {
-    const select = $(id);
-    const previous = select.value;
-    select.innerHTML = projectOptions;
-    if (previous) select.value = previous;
-  }
+  const projectSelect = $('#project');
+  const previousProject = projectSelect.value;
+  projectSelect.innerHTML = `${projects.map(project => `<option value="${safe(project.name)}">${safe(project.name)}</option>`).join('')}<option value="General">General</option>`;
+  if (previousProject) projectSelect.value = previousProject;
 
   const recurring = sortTasks(tasks.filter(task => task.recurring && !task.completed));
   $('#recurringList').innerHTML = recurring.length
@@ -782,6 +780,7 @@ function render() {
           ${avatar(task.assignee)}
           <div class="recurring-tools">
             ${notesButton('task', task.id)}
+            <button class="edit">Edit</button>
             <button class="link recurring-toggle">${task.paused ? 'Resume' : 'Pause'}</button>
             <button class="delete" aria-label="Delete recurring task ${safe(task.name)}">×</button>
           </div>
@@ -890,9 +889,26 @@ function openNotes(type, id, name) {
    Task dialog (create and edit)
    -------------------------------------------------------------------------- */
 
-function openTaskDialog(task = null) {
+/**
+ * Keeps the repeat controls and the due date in step with the checkbox. A
+ * repeating task needs a date to count forward from, so the date stops being
+ * optional the moment the box is ticked.
+ */
+function syncRepeatFields() {
+  const repeating = $('#taskRecurring').checked;
+  $('#repeatFields').hidden = !repeating;
+  $('#dueDate').required = repeating;
+  $('#dueDateLabel').textContent = repeating ? 'Next due date' : 'Due date';
+}
+
+$('#taskRecurring').addEventListener('change', syncRepeatFields);
+
+function openTaskDialog(task = null, { repeating = false } = {}) {
   $('#taskId').value = task?.id || '';
-  $('#taskDialogTitle').textContent = task ? 'Edit task' : 'Add a task';
+  const repeats = task ? Boolean(task.recurring) : repeating;
+  $('#taskDialogTitle').textContent = task
+    ? (repeats ? 'Edit recurring task' : 'Edit task')
+    : (repeats ? 'Add a recurring task' : 'Add a task');
   $('#taskSubmit').textContent = task ? 'Save changes' : 'Add task';
   $('#taskName').value = task?.name || '';
   $('#dueDate').value = task?.due || '';
@@ -900,7 +916,9 @@ function openTaskDialog(task = null) {
   $('#status').value = task?.status || 'todo';
   $('#taskNote').value = task?.note || '';
   $('#taskNoteCount').textContent = String((task?.note || '').length);
-  $('#taskFormHelp').hidden = Boolean(task);
+  $('#taskRecurring').checked = repeats;
+  $('#taskFrequency').value = task?.frequency || 'monthly';
+  syncRepeatFields();
 
   renderPeopleControls();
   if (task) {
@@ -937,7 +955,7 @@ const VIEW_ACTIONS = {
   overview: ['Add task', () => openTaskDialog()],
   tasks: ['Add task', () => openTaskDialog()],
   projects: ['New project', () => openDialog(dialogs.project)],
-  recurring: ['Add recurring task', () => openDialog(dialogs.recurring)],
+  recurring: ['Add recurring task', () => openTaskDialog(null, { repeating: true })],
   team: ['Add task', () => openTaskDialog()]
 };
 
@@ -1034,6 +1052,7 @@ document.addEventListener('click', async event => {
   if (recurringRow) {
     const task = tasks.find(item => item.id === Number(recurringRow.dataset.id));
     if (!task) return;
+    if (event.target.closest('.edit')) { openTaskDialog(task); return; }
     if (event.target.closest('.recurring-toggle')) {
       try {
         await save(() => updateTask(task, { paused: !task.paused }), { failure: 'That change was not saved.' });
@@ -1090,6 +1109,7 @@ $('#taskForm').addEventListener('submit', async event => {
   const submit = event.submitter;
   submit.disabled = true;
 
+  const recurring = $('#taskRecurring').checked;
   const fields = {
     name: $('#taskName').value.trim(),
     assignee: $('#assignee').value,
@@ -1097,7 +1117,9 @@ $('#taskForm').addEventListener('submit', async event => {
     project: $('#project').value,
     priority: $('#priority').value,
     status: $('#status').value,
-    note: $('#taskNote').value.trim()
+    note: $('#taskNote').value.trim(),
+    recurring,
+    frequency: $('#taskFrequency').value
   };
   const id = Number($('#taskId').value);
 
@@ -1109,42 +1131,18 @@ $('#taskForm').addEventListener('submit', async event => {
         showToast('That task is no longer in the workspace.', { type: 'error' });
         return;
       }
+      // Turning repeating back on has to clear the flag the last completion
+      // set, or the schedule would never produce another occurrence.
+      if (recurring && !task.recurring) fields.recurrence_generated = false;
       await save(() => updateTask(task, fields), { failure: 'The task was not saved.' });
-      showToast('Task updated.');
+      showToast(recurring ? 'Recurring task updated.' : 'Task updated.');
     } else {
-      await save(() => createTask({ ...fields, recurring: false, frequency: 'monthly', paused: false, recurrence_generated: false, completed: false }), { failure: 'The task was not created.' });
-      showToast('Task added.');
+      await save(() => createTask({ ...fields, paused: false, recurrence_generated: false, completed: false }), { failure: 'The task was not created.' });
+      showToast(recurring ? 'Added to the schedule.' : 'Task added.');
     }
     event.target.reset();
     closeDialog(dialogs.task);
     render();
-  } catch { /* handled by save() */ }
-  finally { submit.disabled = false; }
-});
-
-$('#recurringForm').addEventListener('submit', async event => {
-  event.preventDefault();
-  const submit = event.submitter;
-  submit.disabled = true;
-  try {
-    await save(() => createTask({
-      name: $('#recurringName').value.trim(),
-      assignee: $('#recurringAssignee').value,
-      due: $('#recurringDueDate').value,
-      project: $('#recurringProject').value,
-      recurring: true,
-      frequency: $('#frequency').value,
-      paused: false,
-      recurrence_generated: false,
-      priority: 'normal',
-      status: 'todo',
-      note: '',
-      completed: false
-    }), { failure: 'The recurring task was not created.' });
-    event.target.reset();
-    closeDialog(dialogs.recurring);
-    render();
-    showToast('Added to the schedule.');
   } catch { /* handled by save() */ }
   finally { submit.disabled = false; }
 });
