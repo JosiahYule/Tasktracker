@@ -1,4 +1,4 @@
-import { activityStore, auth, noteStore, profileStore, projectStore, taskStore, OfflineError, SchemaError } from './supabase.js';
+import { activityStore, auth, noteStore, profileStore, projectStore, taskStore, AuthError, OfflineError, SchemaError } from './supabase.js';
 
 /* --------------------------------------------------------------------------
    State
@@ -14,7 +14,8 @@ let people = [];
  * assignee menus, the sidebar, the team view, and the focus list.
  */
 let members = [];
-let noteIndex = [];
+/** entity key -> number of notes. Rebuilt whenever the note index changes. */
+let noteCounts = new Map();
 let currentProfile = null;
 let dataSignature = '';
 let hasLoadedOnce = false;
@@ -67,10 +68,32 @@ function parseDate(value) {
 }
 
 /**
+ * A render asks for the same handful of dates over and over: every task is
+ * measured by the attention band, the nav badge, two sorts and its own row.
+ * The answer only changes when the calendar day does, so cache it and drop the
+ * cache at midnight.
+ */
+const dueCache = new Map();
+let dueCacheDay = 0;
+
+/**
  * Turns a due date into the state the whole interface keys off: the chip, the
  * grouping, and the counts in the attention band.
  */
 function dueInfo(value) {
+  const today = startOfToday().getTime();
+  if (today !== dueCacheDay) {
+    dueCache.clear();
+    dueCacheDay = today;
+  }
+  const cached = dueCache.get(value ?? '');
+  if (cached) return cached;
+  const info = computeDueInfo(value);
+  dueCache.set(value ?? '', info);
+  return info;
+}
+
+function computeDueInfo(value) {
   const date = parseDate(value);
   if (!date) return { state: 'none', bucket: 'none', label: 'No due date', days: null };
 
@@ -165,6 +188,9 @@ function showToast(message, { type = '', actionLabel = '', onAction = null, dura
 let lastFocused = null;
 
 function openDialog(dialog) {
+  // showModal() throws InvalidStateError on an already-open dialog, which a
+  // double click on Edit or a stray keyboard shortcut can produce.
+  if (dialog.open) return;
   lastFocused = document.activeElement;
   dialog.showModal();
   // Land on the first real field rather than the close button.
@@ -179,6 +205,7 @@ function closeDialog(dialog) {
 
 /** Promise-based replacement for deleting things with no warning at all. */
 function confirmAction({ title, message, accept = 'Delete' }) {
+  if (dialogs.confirm.open) return Promise.resolve(false);
   return new Promise(resolve => {
     $('#confirmTitle').textContent = title;
     $('#confirmMessage').textContent = message;
@@ -209,6 +236,13 @@ function confirmAction({ title, message, accept = 'Delete' }) {
 
 function handleError(error, fallbackMessage) {
   console.error(error);
+  // A refresh token that has finally expired used to leave the workspace on
+  // screen failing every poll with "something went wrong", with no hint that
+  // the fix was to sign in again.
+  if (error instanceof AuthError) {
+    returnToSignIn(error.message);
+    return;
+  }
   if (error instanceof SchemaError) {
     $('#schemaBanner').hidden = false;
     setSyncStatus('Database out of date', 'error');
@@ -239,11 +273,31 @@ async function save(operation, { failure } = {}) {
 }
 
 function signatureOf(taskRows, projectRows, noteRows) {
+  // Notes are never edited, so a count plus the highest id is enough to catch
+  // a post, a delete, or one of each landing in the same poll window.
+  const highestNote = noteRows.reduce((highest, note) => Math.max(highest, note.id || 0), 0);
   return [
     taskRows.map(task => `${task.id}:${task.updated_at}`).join(','),
     projectRows.map(project => `${project.id}:${project.updated_at || project.created_at}`).join(','),
-    noteRows.length
+    `${noteRows.length}:${highestNote}`
   ].join('|');
+}
+
+/** Ids arrive as numbers from JSON and as strings from data attributes. */
+const noteKey = (type, id) => `${type}:${Number(id)}`;
+
+function countNotes(noteRows) {
+  const counts = new Map();
+  for (const note of noteRows) {
+    const key = noteKey(note.entity_type, note.entity_id);
+    counts.set(key, (counts.get(key) || 0) + 1);
+  }
+  return counts;
+}
+
+function adjustNoteCount(type, id, delta) {
+  const key = noteKey(type, id);
+  noteCounts.set(key, Math.max(0, (noteCounts.get(key) || 0) + delta));
 }
 
 async function loadWorkspace({ quiet = false } = {}) {
@@ -260,7 +314,7 @@ async function loadWorkspace({ quiet = false } = {}) {
     const signature = signatureOf(taskRows, projectRows, noteRows);
     tasks = taskRows;
     projects = projectRows;
-    noteIndex = noteRows;
+    noteCounts = countNotes(noteRows);
     people = resolvePeople(profileRows, taskRows);
     members = people.filter(person => person.role !== 'admin');
     hasLoadedOnce = true;
@@ -318,6 +372,9 @@ async function updateTask(task, changes) {
   const patch = diffOf(task, changes);
   if (!Object.keys(patch).length) return task;
   const updated = await taskStore.update(task.id, patch);
+  // No row came back: the other office deleted the task between this render
+  // and this write. Saying nothing would leave the edit looking successful.
+  if (!updated) throw new Error('That task is no longer in the workspace.');
   Object.assign(task, updated);
   return task;
 }
@@ -346,38 +403,60 @@ function nextDueDate(date, frequency) {
   return `${next.getFullYear()}-${String(next.getMonth() + 1).padStart(2, '0')}-${String(next.getDate()).padStart(2, '0')}`;
 }
 
+/** Ticking the same checkbox twice before the first write lands toggled it back. */
+const togglesInFlight = new Set();
+
 async function toggleComplete(task) {
+  if (togglesInFlight.has(task.id)) return;
+
   const completed = !task.completed;
-  const shouldGenerate = completed && task.recurring && !task.recurrence_generated;
+  const wantsNext = completed && task.recurring && !task.recurrence_generated;
 
   // Optimistic: the checkbox responds immediately and rolls back if the write
   // fails, instead of waiting on a round trip.
   const previous = { completed: task.completed, recurrence_generated: task.recurrence_generated };
+  togglesInFlight.add(task.id);
   task.completed = completed;
-  if (shouldGenerate) task.recurrence_generated = true;
+  if (wantsNext) task.recurrence_generated = true;
   render();
 
+  let scheduled = null;
   try {
     await save(async () => {
-      await taskStore.update(task.id, { completed, ...(shouldGenerate ? { recurrence_generated: true } : {}) });
-      if (shouldGenerate) {
-        const { id, created_at, updated_at, completed_at, ...rest } = task;
-        await createTask({
-          ...rest,
-          due: nextDueDate(task.due, task.frequency),
-          paused: false,
-          recurrence_generated: false,
-          status: 'todo',
-          note: '',
-          completed: false
-        });
+      if (!wantsNext) {
+        await taskStore.update(task.id, { completed });
+        return;
       }
+
+      // Complete and claim the next occurrence in one conditional write. If
+      // the other office ticked the same reconciliation first, nothing comes
+      // back and we skip the insert rather than schedule it twice.
+      const claimed = await taskStore.completeAndClaimRecurrence(task.id);
+      if (!claimed) {
+        await taskStore.update(task.id, { completed });
+        return;
+      }
+
+      const due = nextDueDate(task.due, task.frequency);
+      const { id, created_at, updated_at, completed_at, ...rest } = task;
+      await createTask({
+        ...rest,
+        due,
+        paused: false,
+        recurrence_generated: false,
+        status: 'todo',
+        note: '',
+        completed: false
+      });
+      scheduled = due;
     });
-    if (shouldGenerate) showToast(`Next occurrence scheduled for ${dateLabel(nextDueDate(task.due, task.frequency))}.`);
+    if (scheduled) showToast(`Next occurrence scheduled for ${dateLabel(scheduled)}.`);
     render();
   } catch {
     Object.assign(task, previous);
     render();
+  } finally {
+    togglesInFlight.delete(task.id);
   }
 }
 
@@ -392,6 +471,14 @@ async function removeTask(task, { label = 'Task' } = {}) {
   tasks = tasks.filter(item => item !== task);
   render();
 
+  // A poll can replace the whole array between the delete and the Undo click,
+  // so put the row back only if it is not already there.
+  const restoreLocally = () => {
+    if (!tasks.some(item => item.id === task.id)) tasks.splice(Math.min(index, tasks.length), 0, task);
+    dataSignature = '';
+    render();
+  };
+
   try {
     await save(() => taskStore.softDelete(task.id), { failure: 'The task was not deleted.' });
     showToast(`${label} deleted.`, {
@@ -399,15 +486,13 @@ async function removeTask(task, { label = 'Task' } = {}) {
       onAction: async () => {
         try {
           await save(() => taskStore.restore(task.id), { failure: 'The task was not restored.' });
-          tasks.splice(Math.min(index, tasks.length), 0, task);
-          render();
+          restoreLocally();
           showToast(`${label} restored.`);
         } catch { /* handled by save() */ }
       }
     });
   } catch {
-    tasks.splice(Math.min(index, tasks.length), 0, task);
-    render();
+    restoreLocally();
   }
 }
 
@@ -416,7 +501,7 @@ async function removeTask(task, { label = 'Task' } = {}) {
    -------------------------------------------------------------------------- */
 
 function noteTotal(type, id) {
-  return noteIndex.filter(note => note.entity_type === type && note.entity_id === Number(id)).length;
+  return noteCounts.get(noteKey(type, id)) || 0;
 }
 
 function notesButton(type, id) {
@@ -464,7 +549,7 @@ const GROUP_TITLES = {
 
 function sortTasks(list) {
   const copy = [...list];
-  if (sortBy === 'name') return copy.sort((a, b) => a.name.localeCompare(b.name));
+  if (sortBy === 'name') return copy.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
   if (sortBy === 'created') return copy.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
   if (sortBy === 'priority') {
     return copy.sort((a, b) =>
@@ -475,23 +560,26 @@ function sortTasks(list) {
   return copy.sort((a, b) => (dueInfo(a.due).days ?? 99999) - (dueInfo(b.due).days ?? 99999));
 }
 
+/** Which due buckets each attention counter is asking for. */
+const DUE_FILTER_BUCKETS = {
+  overdue: ['overdue'],
+  today: ['today'],
+  week: ['overdue', 'today', 'tomorrow', 'week']
+};
+
 function visibleTasks() {
   const person = $('#personFilter').value;
   const term = searchTerm.trim().toLowerCase();
+  const buckets = DUE_FILTER_BUCKETS[dueFilter];
 
   return tasks.filter(task => {
     if (taskFilter === 'open' && task.completed) return false;
     if (taskFilter === 'completed' && !task.completed) return false;
     if (person !== 'all' && task.assignee !== person) return false;
 
-    if (dueFilter !== 'all' && !task.completed) {
-      const bucket = dueInfo(task.due).bucket;
-      if (dueFilter === 'overdue' && bucket !== 'overdue') return false;
-      if (dueFilter === 'today' && bucket !== 'today') return false;
-      if (dueFilter === 'week' && !['overdue', 'today', 'tomorrow', 'week'].includes(bucket)) return false;
-    } else if (dueFilter !== 'all' && task.completed) {
-      return false;
-    }
+    // A deadline filter is about work still to do, so completed rows drop out
+    // whatever the status filter says.
+    if (buckets && (task.completed || !buckets.includes(dueInfo(task.due).bucket))) return false;
 
     if (term) {
       const haystack = `${task.name} ${task.project} ${task.assignee} ${task.note || ''}`.toLowerCase();
@@ -691,9 +779,11 @@ function render() {
           <div class="recurring-date"><strong>${dateLabel(task.due)}</strong><span>${caption}</span></div>
           <div class="recurring-copy"><strong>${safe(task.name)}</strong><span>${safe(task.project)} · ${frequencyLabel(task.frequency)}</span></div>
           ${avatar(task.assignee)}
-          ${notesButton('task', task.id)}
-          <button class="link recurring-toggle">${task.paused ? 'Resume' : 'Pause'}</button>
-          <button class="delete" aria-label="Delete recurring task ${safe(task.name)}">×</button>
+          <div class="recurring-tools">
+            ${notesButton('task', task.id)}
+            <button class="link recurring-toggle">${task.paused ? 'Resume' : 'Pause'}</button>
+            <button class="delete" aria-label="Delete recurring task ${safe(task.name)}">×</button>
+          </div>
         </article>`;
       }).join('')
     : emptyState('Nothing scheduled', 'Add the reconciliations and filings that repeat.');
@@ -772,10 +862,14 @@ function switchNotesTab(tab) {
     button.classList.toggle('active', active);
     button.setAttribute('aria-selected', String(active));
   });
-  $('#notesList').hidden = tab !== 'notes';
-  $('#historyList').hidden = tab !== 'history';
-  $('#noteEntry').hidden = tab !== 'notes';
-  $('#noteActions').querySelector('.primary').hidden = tab !== 'notes';
+  const onNotes = tab === 'notes';
+  $('#notesList').hidden = !onNotes;
+  $('#historyList').hidden = onNotes;
+  $('#noteEntry').hidden = !onNotes;
+  $('#noteActions').querySelector('.primary').hidden = !onNotes;
+  // A `required` field the History tab has hidden cannot be focused, so the
+  // browser refuses the submit with an error only the console sees.
+  $('#noteBody').required = onNotes;
   if (tab === 'history') renderHistoryList();
 }
 
@@ -826,11 +920,11 @@ function openTaskDialog(task = null) {
    -------------------------------------------------------------------------- */
 
 const VIEW_TITLES = {
-  overview: ['Overview', 'Today’s work, in one place.'],
-  tasks: ['To-do list', 'Assign, update, and complete tasks.'],
-  projects: ['Projects', 'Shared work and progress.'],
-  recurring: ['Recurring tasks', 'Routine work and its next due date.'],
-  team: ['Team', 'Who is working on what, in both offices.']
+  overview: 'Overview',
+  tasks: 'To-do list',
+  projects: 'Projects',
+  recurring: 'Recurring tasks',
+  team: 'Team'
 };
 
 /**
@@ -866,7 +960,7 @@ function showView(view) {
     else button.removeAttribute('aria-current');
   });
 
-  $('#pageTitle').textContent = VIEW_TITLES[view][0];
+  $('#pageTitle').textContent = VIEW_TITLES[view];
 
   const [label] = VIEW_ACTIONS[view];
   $('#primaryAction').textContent = label;
@@ -888,6 +982,7 @@ document.addEventListener('click', async event => {
       button.classList.toggle('active', active);
       button.setAttribute('aria-selected', String(active));
     });
+    $('#taskList').setAttribute('aria-labelledby', 'filterOpen');
     showView('tasks');
     renderTasks();
     return;
@@ -926,9 +1021,7 @@ document.addEventListener('click', async event => {
     const id = Number(deleteNote.dataset.noteId);
     try {
       await save(() => noteStore.remove(id), { failure: 'The note was not deleted.' });
-      const position = noteIndex.findIndex(note =>
-        note.entity_type === openNotesContext.type && note.entity_id === Number(openNotesContext.id));
-      if (position !== -1) noteIndex.splice(position, 1);
+      adjustNoteCount(openNotesContext.type, openNotesContext.id, -1);
       await renderNotesList();
       render();
       showToast('Note deleted.');
@@ -962,11 +1055,15 @@ document.addEventListener('click', async event => {
 
 document.querySelectorAll('.filter').forEach(button => button.addEventListener('click', () => {
   taskFilter = button.dataset.filter;
+  // "Completed" plus a deadline filter can only ever be empty, which read as a
+  // broken list rather than a contradiction.
+  if (taskFilter !== 'open') dueFilter = 'all';
   document.querySelectorAll('.filter').forEach(other => {
     const active = other === button;
     other.classList.toggle('active', active);
     other.setAttribute('aria-selected', String(active));
   });
+  $('#taskList').setAttribute('aria-labelledby', button.id);
   renderTasks();
 }));
 
@@ -1006,6 +1103,11 @@ $('#taskForm').addEventListener('submit', async event => {
   try {
     if (id) {
       const task = tasks.find(item => item.id === id);
+      if (!task) {
+        closeDialog(dialogs.task);
+        showToast('That task is no longer in the workspace.', { type: 'error' });
+        return;
+      }
       await save(() => updateTask(task, fields), { failure: 'The task was not saved.' });
       showToast('Task updated.');
     } else {
@@ -1063,7 +1165,11 @@ $('#projectForm').addEventListener('submit', async event => {
     render();
     showToast('Project created.');
   } catch (error) {
-    if (/duplicate|unique/i.test(error.message || '')) showToast('A project with that name already exists.', { type: 'error' });
+    if (/duplicate|unique/i.test(error.message || '')) {
+      showToast('A project with that name already exists.', { type: 'error' });
+    } else if (!(error instanceof AuthError)) {
+      showToast('The project was not created.', { type: 'error' });
+    }
   } finally { submit.disabled = false; }
 });
 
@@ -1083,7 +1189,7 @@ $('#noteForm').addEventListener('submit', async event => {
       author_name: currentProfile.display_name
     }), { failure: 'The note was not posted.' });
 
-    noteIndex.push({ entity_type: note.entity_type, entity_id: note.entity_id });
+    adjustNoteCount(note.entity_type, note.entity_id, 1);
     $('#noteBody').value = '';
     $('#noteCount').textContent = '0';
     await renderNotesList();
@@ -1103,6 +1209,8 @@ document.addEventListener('keydown', event => {
 
   const typing = /^(INPUT|TEXTAREA|SELECT)$/.test(event.target.tagName) || event.target.isContentEditable;
   if (typing || document.querySelector('dialog[open]')) return;
+
+  if (!event.key) return;
 
   if (event.key === '/') {
     event.preventDefault();
@@ -1124,25 +1232,68 @@ document.addEventListener('keydown', event => {
 // somebody deliberately asks for dark.
 const THEME_ORDER = ['light', 'dark', 'auto'];
 const THEME_LABELS = { light: 'Light theme', dark: 'Dark theme', auto: 'Match system' };
+const THEME_KEY = 'tasktracker-theme';
+
+let currentTheme = 'light';
 
 function applyTheme(theme) {
+  currentTheme = THEME_ORDER.includes(theme) ? theme : 'light';
   // Always stamped, including 'auto', so the stylesheet can scope the
   // prefers-color-scheme block to the auto case only.
-  document.documentElement.dataset.theme = theme;
-  $('#themeToggleLabel').textContent = THEME_LABELS[theme];
-  localStorage.setItem('tasktracker-theme', theme);
+  document.documentElement.dataset.theme = currentTheme;
+  $('#themeToggleLabel').textContent = THEME_LABELS[currentTheme];
+  // Private windows and locked-down browsers throw on write; the theme still
+  // applies for this session, it just is not remembered.
+  try { localStorage.setItem(THEME_KEY, currentTheme); } catch { /* not persisted */ }
 }
 
-applyTheme(localStorage.getItem('tasktracker-theme') || 'light');
+let storedTheme = null;
+try { storedTheme = localStorage.getItem(THEME_KEY); } catch { /* storage unavailable */ }
+applyTheme(storedTheme || 'light');
 
 $('#themeToggle').addEventListener('click', () => {
-  const current = localStorage.getItem('tasktracker-theme') || 'light';
-  applyTheme(THEME_ORDER[(THEME_ORDER.indexOf(current) + 1) % THEME_ORDER.length]);
+  applyTheme(THEME_ORDER[(THEME_ORDER.indexOf(currentTheme) + 1) % THEME_ORDER.length]);
 });
 
 /* --------------------------------------------------------------------------
    Auth
    -------------------------------------------------------------------------- */
+
+/**
+ * Everything the workspace holds about the signed-in user, so signing out or
+ * being signed out never leaves one person's filters, roster or note counts in
+ * front of the next person to use the machine.
+ */
+function resetWorkspaceState() {
+  clearTimeout(pollTimer);
+  pollTimer = null;
+  tasks = [];
+  projects = [];
+  people = [];
+  members = [];
+  noteCounts = new Map();
+  currentProfile = null;
+  openNotesContext = null;
+  dataSignature = '';
+  hasLoadedOnce = false;
+  taskFilter = 'open';
+  dueFilter = 'all';
+  searchTerm = '';
+  $('#taskSearch').value = '';
+  $('#signedInName').textContent = '';
+  $('#signedInRole').textContent = '';
+  $('#schemaBanner').hidden = true;
+  setSyncStatus('', 'online');
+}
+
+/** Used both by the Sign out button and by a session that could not be renewed. */
+function returnToSignIn(message = '') {
+  resetWorkspaceState();
+  document.querySelectorAll('dialog[open]').forEach(dialog => dialog.close());
+  appShell.hidden = true;
+  authScreen.hidden = false;
+  $('#authError').textContent = message;
+}
 
 async function startApp() {
   if (!auth.getSession()) return;
@@ -1154,15 +1305,13 @@ async function startApp() {
     currentProfile = await auth.profile();
     $('#signedInName').textContent = currentProfile.display_name;
     $('#signedInRole').textContent = currentProfile.role;
-      authScreen.hidden = true;
+    authScreen.hidden = true;
     appShell.hidden = false;
     await loadWorkspace();
     schedulePoll();
   } catch (error) {
     await auth.signOut();
-    authScreen.hidden = false;
-    appShell.hidden = true;
-    $('#authError').textContent = error.message;
+    returnToSignIn(error.message);
   }
 }
 
@@ -1187,16 +1336,7 @@ $('#loginForm').addEventListener('submit', async event => {
 });
 
 $('#signOut').addEventListener('click', async () => {
-  clearTimeout(pollTimer);
-  tasks = [];
-  projects = [];
-  noteIndex = [];
-  people = [];
-  currentProfile = null;
-  dataSignature = '';
-  hasLoadedOnce = false;
-  appShell.hidden = true;
-  authScreen.hidden = false;
+  returnToSignIn();
   await auth.signOut();
 });
 
@@ -1223,11 +1363,16 @@ function pollDelay() {
 
 function schedulePoll() {
   clearTimeout(pollTimer);
+  // Nothing to poll for while signed out, and re-arming there left a timer
+  // firing every five seconds behind the sign-in screen. Signing in re-arms.
+  if (!auth.getSession()) return;
+
   const delay = pollDelay();
   if (delay === null) return;
 
   pollTimer = setTimeout(async () => {
-    if (auth.getSession() && !pendingSaves && !document.querySelector('dialog[open]')) {
+    if (!auth.getSession()) return;
+    if (!pendingSaves && !document.querySelector('dialog[open]')) {
       await loadWorkspace({ quiet: true });
     }
     schedulePoll();
@@ -1248,7 +1393,16 @@ window.addEventListener('unhandledrejection', event => {
 });
 
 // Dates roll over at midnight; refresh the relative labels so an open tab does
-// not keep calling today's work "tomorrow".
-setInterval(() => { if (hasLoadedOnce && !document.querySelector('dialog[open]')) render(); }, 600000);
+// not keep calling today's work "tomorrow". Only when the day has actually
+// changed: a blind re-render every ten minutes threw away hover and text
+// selection a hundred and forty times a day for nothing.
+let renderedDay = startOfToday().getTime();
+setInterval(() => {
+  const today = startOfToday().getTime();
+  if (today === renderedDay || !hasLoadedOnce) return;
+  if (document.querySelector('dialog[open]')) return;
+  renderedDay = today;
+  render();
+}, 600000);
 
 startApp();

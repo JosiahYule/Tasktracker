@@ -421,10 +421,13 @@ kbd {
 .progress-ring span { z-index: 1; grid-area: 1 / 1; font-size: .8125rem; font-weight: 700; }
 
 .recurring-item {
-  display: grid; grid-template-columns: 116px minmax(0, 1fr) auto auto auto auto;
+  display: grid; grid-template-columns: 116px minmax(0, 1fr) auto auto;
   align-items: center; gap: 8px 16px;
   padding: 15px 4px; border-bottom: 1px solid var(--line);
 }
+/* Grouped like .task-tools, so Pause and the delete control travel together
+   instead of wrapping to a row of their own on a narrow window. */
+.recurring-tools { display: flex; align-items: center; gap: 2px; }
 .recurring-item:last-child { border-bottom: 0; }
 .recurring-item.paused { opacity: .5; }
 .recurring-date, .recurring-copy { min-width: 0; display: grid; gap: 3px; }
@@ -555,7 +558,7 @@ input:hover, select:hover, textarea:hover { border-color: var(--ink-3); }
 }
 
 @media (max-width: 900px) {
-  .recurring-item { grid-template-columns: 96px minmax(0, 1fr) auto auto; }
+  .recurring-item { grid-template-columns: 96px minmax(0, 1fr) auto auto; column-gap: 12px; }
 }
 
 @media (max-width: 780px) {
@@ -589,7 +592,11 @@ input:hover, select:hover, textarea:hover { border-color: var(--ink-3); }
 @media (max-width: 560px) {
   .topbar h1 { font-size: 1.5rem; }
   .field-row { grid-template-columns: 1fr; gap: 0; }
-  .recurring-item { grid-template-columns: minmax(0, 1fr) auto auto; }
-  .recurring-date, .recurring-copy { grid-column: 1; }
+  /* Date and assignee on one line, the task under it, the controls last. */
+  .recurring-item { grid-template-columns: minmax(0, 1fr) auto; row-gap: 10px; }
+  .recurring-date { grid-column: 1; grid-row: 1; }
+  .recurring-item > .avatar { grid-column: 2; grid-row: 1; }
+  .recurring-copy { grid-column: 1 / -1; grid-row: 2; }
+  .recurring-tools { grid-column: 1 / -1; grid-row: 3; justify-self: start; margin-left: -8px; }
   .attn { flex: 1 1 100%; }
 }

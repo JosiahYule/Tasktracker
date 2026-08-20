@@ -12,7 +12,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="styles.css?v=12" />
+    <link rel="stylesheet" href="styles.css?v=13" />
   </head>
   <body>
     <a class="skip-link" href="#mainContent">Skip to content</a>
@@ -93,9 +93,9 @@
         <section class="view" id="tasksView">
           <div class="toolbar">
             <div class="filters" role="tablist" aria-label="Task status filter">
-              <button class="filter active" data-filter="open" role="tab" aria-selected="true">Open</button>
-              <button class="filter" data-filter="completed" role="tab" aria-selected="false">Completed</button>
-              <button class="filter" data-filter="all" role="tab" aria-selected="false">All</button>
+              <button class="filter active" id="filterOpen" data-filter="open" role="tab" aria-selected="true" aria-controls="taskList">Open</button>
+              <button class="filter" id="filterCompleted" data-filter="completed" role="tab" aria-selected="false" aria-controls="taskList">Completed</button>
+              <button class="filter" id="filterAll" data-filter="all" role="tab" aria-selected="false" aria-controls="taskList">All</button>
             </div>
             <div class="toolbar-actions">
               <div class="search-field">
@@ -112,7 +112,7 @@
             </div>
           </div>
           <div class="active-filters" id="activeFilters" hidden></div>
-          <div class="card"><div class="task-list grouped" id="taskList"></div></div>
+          <div class="card"><div class="task-list grouped" id="taskList" role="tabpanel" aria-labelledby="filterOpen"></div></div>
         </section>
 
         <section class="view" id="projectsView">
@@ -177,11 +177,11 @@
         <div class="dialog-heading"><div><h2 id="notesDialogTitle">Notes</h2><p id="notesEntityName"></p></div><button type="button" class="icon" data-close="notesDialog" aria-label="Close">×</button></div>
         <input id="noteEntityType" type="hidden" /><input id="noteEntityId" type="hidden" />
         <div class="notes-tabs" role="tablist" aria-label="Notes and history">
-          <button type="button" class="notes-tab active" data-tab="notes" role="tab" aria-selected="true">Notes</button>
-          <button type="button" class="notes-tab" data-tab="history" role="tab" aria-selected="false">History</button>
+          <button type="button" class="notes-tab active" id="notesTab" data-tab="notes" role="tab" aria-selected="true" aria-controls="notesList">Notes</button>
+          <button type="button" class="notes-tab" id="historyTab" data-tab="history" role="tab" aria-selected="false" aria-controls="historyList">History</button>
         </div>
-        <div class="notes-list" id="notesList"></div>
-        <div class="notes-list" id="historyList" hidden></div>
+        <div class="notes-list" id="notesList" role="tabpanel" aria-labelledby="notesTab" tabindex="0"></div>
+        <div class="notes-list" id="historyList" role="tabpanel" aria-labelledby="historyTab" tabindex="0" hidden></div>
         <label class="note-entry" id="noteEntry">Add a note<textarea id="noteBody" required maxlength="1000" placeholder="Share context, a decision, or a handoff…"></textarea><small><span id="noteCount">0</span>/1000</small></label>
         <div class="actions" id="noteActions"><button type="button" data-close="notesDialog">Close</button><button type="submit" class="primary">Post note</button></div>
       </form>
@@ -197,6 +197,6 @@
 
     <div class="toast" id="toast" role="status" aria-live="polite"><span id="toastMessage"></span><button type="button" id="toastAction" hidden>Undo</button></div>
 
-    <script type="module" src="app.js?v=11"></script>
+    <script type="module" src="app.js?v=13"></script>
   </body>
 </html>

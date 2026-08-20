@@ -145,6 +145,10 @@ create index if not exists tasks_recurring_idx
   on public.tasks (recurring, paused) where completed = false and deleted_at is null;
 create index if not exists tasks_updated_at_idx
   on public.tasks (updated_at desc);
+-- The shape of the query the app runs every five seconds:
+-- tasks?deleted_at=is.null&order=created_at.asc
+create index if not exists tasks_active_created_idx
+  on public.tasks (created_at) where deleted_at is null;
 create index if not exists notes_entity_idx
   on public.notes (entity_type, entity_id, created_at);
 create index if not exists task_activity_task_idx
@@ -207,7 +211,12 @@ create or replace function public.projects_cascade_rename()
 returns trigger language plpgsql security definer set search_path = public as $$
 begin
   if new.name is distinct from old.name then
-    update public.tasks set project = new.name where project_id = new.id;
+    -- Match on the old name as well: a task written before project_id existed,
+    -- or one whose project was created after it, carries a null project_id and
+    -- would otherwise keep pointing at a name nobody uses any more.
+    update public.tasks
+    set project = new.name
+    where project_id = new.id or (project_id is null and project = old.name);
   end if;
   return new;
 end;
@@ -283,6 +292,19 @@ begin
   if new.name is distinct from old.name then
     insert into public.task_activity (task_id, actor_id, actor_name, action, detail)
     values (new.id, auth.uid(), who, 'renamed', new.name);
+  end if;
+
+  if new.priority is distinct from old.priority then
+    insert into public.task_activity (task_id, actor_id, actor_name, action, detail)
+    values (new.id, auth.uid(), who, 'priority', old.priority || ' to ' || new.priority);
+  end if;
+
+  -- Keyed off project_id, not the text column, so renaming a project does not
+  -- log a move on every task that belongs to it.
+  if new.project_id is distinct from old.project_id then
+    insert into public.task_activity (task_id, actor_id, actor_name, action, detail)
+    values (new.id, auth.uid(), who, 'moved',
+            coalesce(old.project, 'none') || ' to ' || coalesce(new.project, 'none'));
   end if;
 
   return new;
@@ -382,7 +404,7 @@ update public.tasks set completed_at = updated_at
 where completed and completed_at is null;
 
 -- ---------------------------------------------------------------------------
--- Confirm setup. Expect four rows: notes, profiles, projects, task_activity,
+-- Confirm setup. Expect five rows: notes, profiles, projects, task_activity,
 -- tasks.
 -- ---------------------------------------------------------------------------
 

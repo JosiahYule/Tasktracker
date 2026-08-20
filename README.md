@@ -4,13 +4,28 @@ A shared task workspace for the accounting team in Halifax and Charlottetown.
 
 ## Run locally
 
-No build step is required. Start any static file server from the project directory:
+The app itself has no build step. Start any static file server from the project
+directory:
 
 ```bash
 python3 -m http.server 4173
 ```
 
 Then visit `http://localhost:4173`.
+
+## Tests
+
+```bash
+npm install
+npm test
+```
+
+`npm test` drives the interface in headless Chromium against a stubbed Supabase, so it
+needs no project, no credentials and no network. It covers sign-in, the attention
+counters, the filters, search, every sort order, task editing, notes and history,
+delete-and-undo, all five views, the theme cycle, and both ways a session can end.
+Playwright is the only dependency, and it is a dev dependency — nothing is bundled into
+the app.
 
 ## Features
 
@@ -77,3 +92,7 @@ The browser uses the publishable key in `supabase.js`. No secret or service-role
 stored in the frontend. Shared data refreshes every 5 seconds while the tab is in front,
 every 20 seconds when it is behind another window, and pauses when the tab is hidden.
 Only authenticated users with a matching profile can open the workspace.
+
+Access tokens are renewed in the background, so a tab left open all day keeps working.
+When a session can no longer be renewed the app returns to the sign-in screen and says
+so, rather than staying on screen and failing quietly.
