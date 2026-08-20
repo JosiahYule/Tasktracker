@@ -1,0 +1,13 @@
+{
+  "name": "tasktracker",
+  "private": true,
+  "type": "module",
+  "description": "Shared task workspace for the accounting team in Halifax and Charlottetown.",
+  "scripts": {
+    "start": "python3 -m http.server 4173",
+    "test": "node tests/smoke.mjs"
+  },
+  "devDependencies": {
+    "playwright": "^1.56.1"
+  }
+}
