@@ -31,10 +31,14 @@ the app.
 
 - Overview with live counts for overdue work, work due today, and work due this week
 - To-do list grouped by due date, with search, assignee filter, and sorting
-- Full task editing: name, assignee, due date, project, priority, status, and handoff note
+- Full task editing: name, assignee, due date, project, priority, status, handoff note,
+  and whether the task repeats
 - Deletion with a confirmation step and an Undo that restores the task
 - Projects with progress rings and an overdue count
-- Recurring schedule that creates the next occurrence when one is completed
+- Recurring schedule that creates the next occurrence when one is completed. Repeating
+  tasks are edited in the same dialog as any other, so the frequency, the next due date
+  and everything else can be changed after the fact — and a one-off can be put on the
+  schedule, or taken off it, with one checkbox
 - Team view showing each person's open work
 - Threaded notes on tasks and projects, plus a per-task history of who changed what
 - Self-serve accounts: the administrator invites an email, that person sets their own

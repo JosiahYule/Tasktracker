@@ -9,6 +9,7 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { startStaticServer } from './server.mjs';
 import { installSupabaseStub } from './supabase-stub.mjs';
+import { day } from './fixtures.mjs';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -126,6 +127,81 @@ await step('a task can be edited', async () => {
   await page.click('#taskSubmit');
   await page.waitForSelector('#taskDialog[open]', { state: 'detached' });
   await page.waitForSelector('#taskList .task:has-text("Due today filing (edited)")', { state: 'attached' });
+});
+
+await step('a recurring task can be edited from the schedule', async () => {
+  await page.click('.nav-item[data-view="recurring"]');
+  const row = page.locator('.recurring-item', { hasText: 'Monthly bank rec' }).first();
+  await row.locator('.edit').click();
+  await page.waitForSelector('#taskDialog[open]');
+
+  assert(await page.textContent('#taskDialogTitle') === 'Edit recurring task', 'opened as a plain task');
+  assert(await page.$eval('#taskRecurring', node => node.checked), 'the repeat box was not ticked');
+  assert(await page.$eval('#repeatFields', node => !node.hidden), 'the frequency was hidden');
+  assert(await page.$eval('#taskFrequency', node => node.value) === 'monthly', 'wrong frequency loaded');
+  assert(await page.textContent('#dueDateLabel') === 'Next due date', 'due date not relabelled');
+
+  await page.fill('#taskName', 'Quarterly bank rec');
+  await page.selectOption('#taskFrequency', 'quarterly');
+  await page.fill('#dueDate', day(14));
+  await page.click('#taskSubmit');
+  await page.waitForSelector('#taskDialog[open]', { state: 'detached' });
+
+  const patch = supabase.calls.filter(call => call.startsWith('PATCH rest/v1/tasks')).length;
+  assert(patch > 0, 'nothing was saved');
+  await page.waitForSelector('.recurring-item:has-text("Quarterly bank rec")', { state: 'attached' });
+  const caption = await page.locator('.recurring-item', { hasText: 'Quarterly bank rec' }).first().textContent();
+  assert(/Every quarter/.test(caption), `frequency did not change: ${caption}`);
+});
+
+await step('a one-off can be turned into a repeating task and back', async () => {
+  await page.click('.nav-item[data-view="tasks"]');
+  await page.click('.filter[data-filter="all"]');
+  const row = page.locator('#taskList .task', { hasText: 'No date backlog' }).first();
+  await row.locator('.edit').click();
+  await page.waitForSelector('#taskDialog[open]');
+  assert(!await page.$eval('#taskRecurring', node => node.checked), 'a plain task claimed to repeat');
+  assert(await page.$eval('#repeatFields', node => node.hidden), 'frequency shown for a plain task');
+
+  await page.check('#taskRecurring');
+  assert(await page.$eval('#dueDate', node => node.required), 'a repeating task was allowed with no date');
+  await page.fill('#dueDate', day(7));
+  await page.selectOption('#taskFrequency', 'weekly');
+  await page.click('#taskSubmit');
+  await page.waitForSelector('#taskDialog[open]', { state: 'detached' });
+
+  await page.click('.nav-item[data-view="recurring"]');
+  await page.waitForSelector('.recurring-item:has-text("No date backlog")', { state: 'attached' });
+
+  // And back off the schedule again.
+  await page.locator('.recurring-item', { hasText: 'No date backlog' }).first().locator('.edit').click();
+  await page.waitForSelector('#taskDialog[open]');
+  await page.uncheck('#taskRecurring');
+  assert(await page.$eval('#repeatFields', node => node.hidden), 'frequency stayed visible');
+  await page.click('#taskSubmit');
+  await page.waitForSelector('#taskDialog[open]', { state: 'detached' });
+  await page.waitForSelector('.recurring-item:has-text("No date backlog")', { state: 'detached' });
+  await page.click('.nav-item[data-view="tasks"]');
+});
+
+await step('"Add recurring task" opens the same dialog with repeats already on', async () => {
+  await page.click('.nav-item[data-view="recurring"]');
+  await page.click('#primaryAction');
+  await page.waitForSelector('#taskDialog[open]');
+  assert(await page.textContent('#taskDialogTitle') === 'Add a recurring task', 'wrong dialog title');
+  assert(await page.$eval('#taskRecurring', node => node.checked), 'repeats were not pre-selected');
+
+  const before = supabase.calls.filter(call => call === 'POST rest/v1/tasks').length;
+  await page.fill('#taskName', 'Payroll remittance');
+  await page.fill('#dueDate', day(3));
+  await page.selectOption('#taskFrequency', 'monthly');
+  await page.click('#taskSubmit');
+  await page.waitForSelector('#taskDialog[open]', { state: 'detached' });
+  const created = supabase.created.at(-1);
+  assert(supabase.calls.filter(call => call === 'POST rest/v1/tasks').length === before + 1, 'nothing was created');
+  assert(created.recurring === true, 'the new task was not marked as repeating');
+  assert(created.frequency === 'monthly', `wrong frequency: ${created.frequency}`);
+  await page.click('.nav-item[data-view="tasks"]');
 });
 
 await step('notes and history open, and the hidden note field is not required', async () => {

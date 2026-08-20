@@ -21,6 +21,7 @@ export async function installSupabaseStub(page, options = {}) {
     /** Set false to model a project with "Confirm email" switched on. */
     signUpReturnsSession: true,
     signUps: [],
+    created: [],
     resets: [],
     passwordUpdates: 0,
     ...options
@@ -94,7 +95,10 @@ export async function installSupabaseStub(page, options = {}) {
     if (path.startsWith('rest/v1/tasks')) {
       if (method === 'POST') {
         const body = JSON.parse(request.postData() || '{}');
-        return json([{ ...tasks[0], id: 50, created_at: isoNow, updated_at: bumped(), ...body }]);
+        state.created.push(body);
+        const row = { ...tasks[0], id: 50 + state.created.length, created_at: isoNow, updated_at: bumped(), ...body };
+        tasks.push(row);
+        return json([row]);
       }
       if (method === 'PATCH') {
         const id = Number(url.match(/id=eq\.(\d+)/)?.[1]);
