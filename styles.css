@@ -555,7 +555,12 @@ kbd {
 .search-field input:focus + kbd, .search-field input:not(:placeholder-shown) + kbd { display: none; }
 .toolbar select { width: auto; min-width: 150px; }
 
-.active-filters { display: flex; flex-wrap: wrap; gap: 8px; margin: -8px 0 18px; }
+.list-summary {
+  min-height: 31px; display: flex; align-items: center; justify-content: space-between; gap: 14px;
+  margin: -8px 0 14px;
+}
+.result-count { margin: 0; color: var(--ink-3); font-size: .75rem; white-space: nowrap; }
+.active-filters { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
 .chip {
   display: inline-flex; align-items: center; gap: 7px;
   border: 0; border-radius: 999px; padding: 6px 12px;
@@ -563,6 +568,11 @@ kbd {
 }
 .chip:hover { filter: brightness(.97); }
 .chip span { font-size: .9375rem; line-height: 1; opacity: .7; }
+.clear-filters {
+  border: 0; padding: 6px 4px; background: transparent; color: var(--ink-3);
+  font-size: .75rem; font-weight: 600; text-decoration: underline; text-underline-offset: 3px;
+}
+.clear-filters:hover { color: var(--accent); }
 
 .team-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 20px 44px; align-items: start; }
 .team-heading { display: flex; align-items: center; gap: 11px; margin-bottom: 12px; }
@@ -763,4 +773,6 @@ input:focus, select:focus, textarea:focus {
   .recurring-copy { grid-column: 1 / -1; grid-row: 2; }
   .recurring-tools { grid-column: 1 / -1; grid-row: 3; justify-self: start; margin-left: -8px; }
   .attn { flex: 1 1 100%; }
+  .list-summary { align-items: flex-start; flex-direction: column; }
+  .active-filters { justify-content: flex-start; }
 }
