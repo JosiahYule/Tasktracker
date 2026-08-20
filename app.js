@@ -604,8 +604,10 @@ function renderTasks() {
   const list = sortTasks(visibleTasks());
   const container = $('#taskList');
 
+  $('#taskResultCount').textContent = `${list.length} ${list.length === 1 ? 'task' : 'tasks'}`;
+
   if (!list.length) {
-    container.innerHTML = searchTerm || dueFilter !== 'all'
+    container.innerHTML = searchTerm || dueFilter !== 'all' || $('#personFilter').value !== 'all'
       ? emptyState('Nothing matches', 'Try clearing the search or the filter above.')
       : emptyState('Nothing here yet', 'Add a task to get started.');
     renderActiveFilters();
@@ -649,6 +651,11 @@ function renderActiveFilters() {
   if (searchTerm.trim()) {
     chips.push(`<button class="chip" data-clear="search">“${safe(searchTerm.trim())}”<span aria-hidden="true">×</span></button>`);
   }
+  const person = $('#personFilter').value;
+  if (person !== 'all') {
+    chips.push(`<button class="chip" data-clear="person">Assigned to ${safe(person)}<span aria-hidden="true">×</span></button>`);
+  }
+  if (chips.length > 1) chips.push('<button class="clear-filters" data-clear="all">Clear all</button>');
   container.innerHTML = chips.join('');
   container.hidden = !chips.length;
 }
@@ -1011,6 +1018,13 @@ document.addEventListener('click', async event => {
   if (clearChip) {
     if (clearChip.dataset.clear === 'due') dueFilter = 'all';
     if (clearChip.dataset.clear === 'search') { searchTerm = ''; $('#taskSearch').value = ''; }
+    if (clearChip.dataset.clear === 'person') $('#personFilter').value = 'all';
+    if (clearChip.dataset.clear === 'all') {
+      dueFilter = 'all';
+      searchTerm = '';
+      $('#taskSearch').value = '';
+      $('#personFilter').value = 'all';
+    }
     renderTasks();
     return;
   }

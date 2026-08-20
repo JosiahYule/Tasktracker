@@ -102,6 +102,19 @@ await step('search narrows the list and keeps the date groupings', async () => {
   return groups.join(' / ');
 });
 
+await step('summarises results and makes every active filter easy to clear', async () => {
+  await page.selectOption('#personFilter', { index: 1 });
+  await page.fill('#taskSearch', 'recon');
+  await page.waitForTimeout(250);
+  assert(/\d+ tasks?/.test(await page.textContent('#taskResultCount')), 'result count was not announced');
+  assert(await page.locator('#activeFilters [data-clear="person"]').count() === 1, 'assignee filter had no visible chip');
+  assert(await page.locator('#activeFilters [data-clear="search"]').count() === 1, 'search had no visible chip');
+  await page.click('#activeFilters [data-clear="all"]');
+  assert(await page.inputValue('#taskSearch') === '', 'Clear all left the search populated');
+  assert(await page.inputValue('#personFilter') === 'all', 'Clear all left the assignee selected');
+  assert(await page.locator('#activeFilters .chip').count() === 0, 'filter chips remained after Clear all');
+});
+
 await step('every sort order renders', async () => {
   for (const value of ['priority', 'name', 'created', 'due']) {
     await page.selectOption('#sortBy', value);
