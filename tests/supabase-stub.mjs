@@ -16,6 +16,13 @@ export async function installSupabaseStub(page, options = {}) {
     accessTokenExpired: false,
     /** Supabase rotates refresh tokens: reusing a spent one is a 400. */
     rotateRefreshToken: true,
+    /** Addresses public.invitations would say yes to. */
+    invited: ['brady@example.ca'],
+    /** Set false to model a project with "Confirm email" switched on. */
+    signUpReturnsSession: true,
+    signUps: [],
+    resets: [],
+    passwordUpdates: 0,
     ...options
   };
 
@@ -36,8 +43,27 @@ export async function installSupabaseStub(page, options = {}) {
       state.accessTokenExpired = false;
       return json({ access_token: `access-${state.refreshes}`, refresh_token: `refresh-${state.refreshes}`, user: { id: 'u-1' } });
     }
-    if (url.includes('grant_type=password')) return json({ access_token: 'access-0', refresh_token: 'refresh-0', user: { id: 'u-1' } });
+    if (url.includes('grant_type=password')) return json({ access_token: 'access-0', refresh_token: 'refresh-0', user: { id: 'u-1', email: 'michaila@example.ca' } });
     if (url.includes('/auth/v1/logout')) return route.fulfill({ status: 204, body: '' });
+
+    if (path.startsWith('auth/v1/signup')) {
+      const body = JSON.parse(request.postData() || '{}');
+      state.signUps.push(body.email);
+      if (!state.signUpReturnsSession) return json({ id: 'u-new', email: body.email });
+      return json({ access_token: 'access-new', refresh_token: 'refresh-new', user: { id: 'u-1', email: body.email } });
+    }
+    if (path.startsWith('auth/v1/recover')) {
+      state.resets.push(JSON.parse(request.postData() || '{}').email);
+      return json({});
+    }
+    if (path.startsWith('auth/v1/user') && method === 'PUT') {
+      state.passwordUpdates += 1;
+      return json({ id: 'u-1', email: 'michaila@example.ca' });
+    }
+    if (path.startsWith('rest/v1/rpc/email_is_invited')) {
+      const { check_email: email } = JSON.parse(request.postData() || '{}');
+      return json(state.invited.includes(String(email).trim().toLowerCase()));
+    }
 
     if (state.accessTokenExpired) {
       state.unauthorized += 1;

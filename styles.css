@@ -35,6 +35,19 @@
   --soon-soft: #dff3e9;
   --calm-soft: #f4f5f3;
 
+  /* One pair of curves for the whole interface. The browser default (ease)
+     starts slow and ends slow, which reads as sluggish on small movements. */
+  --ease: cubic-bezier(.32, .72, 0, 1);
+  --ease-out: cubic-bezier(.16, 1, .3, 1);
+
+  /* Layered rather than single: one tight shadow for the edge, one wide and
+     soft for the lift. A single large shadow reads as a drop shadow; two read
+     as depth. */
+  --lift-1: 0 1px 2px rgb(30 33 31 / 5%), 0 4px 12px -4px rgb(30 33 31 / 6%);
+  --lift-2: 0 2px 4px rgb(30 33 31 / 6%), 0 12px 28px -8px rgb(30 33 31 / 12%);
+  --lift-3: 0 4px 8px rgb(30 33 31 / 8%), 0 32px 64px -16px rgb(30 33 31 / 22%);
+  --ring: 0 0 0 1px rgb(30 33 31 / 6%);
+
   color-scheme: light;
   font-family: Inter, ui-sans-serif, system-ui, sans-serif;
   font-size: 16px;
@@ -73,6 +86,13 @@
   --soon-soft: #1c322a;
   --calm-soft: #1e2220;
 
+  /* Shadows do almost nothing on a dark ground, so depth comes from a hairline
+     ring instead. */
+  --lift-1: 0 1px 2px rgb(0 0 0 / 30%);
+  --lift-2: 0 2px 6px rgb(0 0 0 / 40%), 0 12px 28px -10px rgb(0 0 0 / 50%);
+  --lift-3: 0 4px 10px rgb(0 0 0 / 45%), 0 32px 64px -16px rgb(0 0 0 / 65%);
+  --ring: 0 0 0 1px rgb(255 255 255 / 8%);
+
   color-scheme: dark;
 }
 
@@ -106,6 +126,11 @@
     --soon-soft: #1c322a;
     --calm-soft: #1e2220;
 
+    --lift-1: 0 1px 2px rgb(0 0 0 / 30%);
+    --lift-2: 0 2px 6px rgb(0 0 0 / 40%), 0 12px 28px -10px rgb(0 0 0 / 50%);
+    --lift-3: 0 4px 10px rgb(0 0 0 / 45%), 0 32px 64px -16px rgb(0 0 0 / 65%);
+    --ring: 0 0 0 1px rgb(255 255 255 / 8%);
+
     color-scheme: dark;
   }
 }
@@ -116,7 +141,23 @@
    rule for [hidden] and leaves banners and tabs stuck on screen. */
 [hidden] { display: none !important; }
 
-body { margin: 0; min-width: 320px; background: var(--bg); color: var(--ink); }
+body {
+  margin: 0; min-width: 320px; background: var(--bg); color: var(--ink);
+  /* Inter at these weights renders heavy without it, particularly on Windows. */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+::selection { background: var(--accent-soft); color: var(--accent); }
+
+/* Headings break on meaning rather than leaving one word on the last line. */
+h1, h2, h3 { text-wrap: balance; }
+p { text-wrap: pretty; }
+
+/* A pressed control should move. Nothing here moves more than a hair. */
+button:not(:disabled):active { transform: translateY(.5px) scale(.994); }
+button { transition: transform .12s var(--ease); }
+button:disabled { cursor: default; opacity: .55; }
 
 button, input, select, textarea { font: inherit; color: inherit; }
 button { cursor: pointer; }
@@ -132,7 +173,6 @@ button { cursor: pointer; }
 :where(button, input, select, textarea, a):focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
-  border-radius: 6px;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -143,23 +183,54 @@ button { cursor: pointer; }
    Sign in
    --------------------------------------------------------------------------- */
 
-.auth-screen { min-height: 100vh; display: grid; place-items: center; padding: 24px; background: var(--bg); }
+.auth-screen {
+  min-height: 100svh; display: grid; place-items: center; padding: 24px;
+  background:
+    radial-gradient(60rem 40rem at 50% -10%, var(--accent-soft), transparent 65%),
+    var(--bg);
+}
 .auth-screen[hidden], .app-shell[hidden] { display: none; }
-.auth-card { width: min(360px, 100%); display: flex; flex-direction: column; }
-.auth-brand { margin-bottom: 32px; font-size: 1.125rem; font-weight: 700; letter-spacing: -.5px; }
-.auth-form-heading { margin-bottom: 24px; }
-.auth-card h1 { margin: 0 0 8px; font-size: 1.5rem; letter-spacing: -.8px; }
-.auth-form-heading p { margin: 0; color: var(--ink-3); font-size: .875rem; }
+.auth-card { width: min(370px, 100%); display: flex; flex-direction: column; }
+.auth-brand {
+  display: flex; align-items: center; gap: 10px; margin-bottom: 34px;
+  font-size: 1.125rem; font-weight: 700; letter-spacing: -.5px;
+}
+.auth-mark {
+  width: 26px; height: 26px; border-radius: 8px;
+  background: linear-gradient(150deg, var(--accent), color-mix(in oklab, var(--accent) 65%, #d9c9ff));
+  box-shadow: var(--lift-1);
+}
+.auth-form-heading { margin-bottom: 26px; }
+.auth-card h1 { margin: 0 0 8px; font-size: 1.625rem; letter-spacing: -.9px; }
+.auth-form-heading p { margin: 0; color: var(--ink-3); font-size: .875rem; line-height: 1.5; }
 .auth-card form { padding: 0; }
-.auth-submit { width: 100%; margin-top: 6px; justify-content: center; }
-.auth-error { min-height: 20px; margin: -6px 0 10px; color: var(--overdue); font-size: .8125rem; }
+.auth-submit { width: 100%; margin-top: 10px; justify-content: center; }
+.auth-error:empty, .auth-note:empty { display: none; }
+.auth-error, .auth-note {
+  margin: -4px 0 12px; border-radius: 9px; padding: 10px 12px;
+  font-size: .8125rem; line-height: 1.5;
+}
+.auth-error { background: var(--overdue-soft); color: var(--overdue); }
+.auth-note { background: var(--soon-soft); color: var(--soon); }
+.auth-hint { margin: -9px 0 15px; color: var(--ink-3); font-size: .75rem; }
+.label-row { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.auth-link {
+  border: 0; padding: 0; background: transparent;
+  color: var(--accent); font-size: .75rem; font-weight: 600;
+}
+.auth-link:hover { text-decoration: underline; text-underline-offset: 2px; }
+.auth-switch {
+  margin: 20px 0 0; padding-top: 20px; border-top: 1px solid var(--line);
+  color: var(--ink-3); font-size: .8125rem; text-align: center;
+}
+.auth-switch .auth-link { font-size: .8125rem; margin-left: 4px; }
 .password-field { position: relative; display: block; }
 .password-field input { padding-right: 64px; }
 .password-field button {
   position: absolute; inset: 0 6px 0 auto;
   border: 0; background: transparent; color: var(--accent); font-size: .75rem; font-weight: 600;
 }
-.auth-help { margin-top: 28px; color: var(--ink-3); font-size: .75rem; line-height: 1.5; }
+.auth-help { margin-top: 18px; color: var(--ink-3); font-size: .75rem; line-height: 1.55; text-align: center; }
 
 /* ---------------------------------------------------------------------------
    Shell
@@ -205,16 +276,29 @@ button { cursor: pointer; }
   background: transparent; color: var(--ink-3); font-size: .75rem; font-weight: 600;
 }
 .theme-toggle:hover { background: var(--surface-2); color: var(--ink-2); }
-.signed-in { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-.signed-in div { min-width: 0; display: grid; gap: 2px; }
+.signed-in { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
+.signed-in-identity {
+  min-width: 0; flex: 1;
+  display: flex; align-items: center; gap: 9px;
+  border: 0; border-radius: 9px; padding: 6px 8px; margin-left: -8px;
+  background: transparent; text-align: left;
+  transition: background .15s var(--ease), transform .12s var(--ease);
+}
+.signed-in-identity:hover { background: var(--surface-2); }
+.signed-in-identity > span { min-width: 0; display: grid; gap: 1px; }
+.signed-in .avatar { width: 27px; height: 27px; }
 .signed-in strong { overflow: hidden; font-size: .8125rem; text-overflow: ellipsis; white-space: nowrap; }
-.signed-in span { color: var(--ink-3); font-size: .6875rem; text-transform: capitalize; }
-.signed-in button { border: 0; padding: 4px; background: transparent; color: var(--accent); font-size: .75rem; font-weight: 600; }
+.signed-in-identity span span { color: var(--ink-3); font-size: .6875rem; text-transform: capitalize; }
+/* Scoped to the sign-out control: the identity button beside it is not a link
+   and should not be painted like one. */
+#signOut { border: 0; padding: 4px; background: transparent; color: var(--accent); font-size: .75rem; font-weight: 600; white-space: nowrap; }
 
 .avatar {
   flex: 0 0 auto; width: 30px; height: 30px; border-radius: 50%;
   display: inline-grid; place-items: center;
   font-size: .6875rem; font-weight: 700; letter-spacing: .2px;
+  /* A hairline keeps the pastel fills from dissolving into a white card. */
+  box-shadow: inset 0 0 0 1px rgb(30 33 31 / 6%);
 }
 .avatar.coral { background: var(--peach); color: #8b5947; }
 .avatar.teal { background: var(--mint); color: #2f6f58; }
@@ -254,9 +338,10 @@ main { min-height: 100vh; margin-left: 236px; padding: 34px 44px 96px 34px; max-
   display: inline-flex; align-items: center; gap: 8px;
   border: 0; border-radius: 9px; padding: 10px 17px;
   background: var(--accent); color: #fff; font-size: .875rem; font-weight: 600;
-  transition: filter .15s;
+  box-shadow: var(--lift-1);
+  transition: filter .18s var(--ease), box-shadow .18s var(--ease), transform .12s var(--ease);
 }
-.primary:hover { filter: brightness(1.12); }
+.primary:hover { filter: brightness(1.1); box-shadow: var(--lift-2); }
 :root[data-theme='dark'] .primary { color: #16121f; }
 .danger { border: 0; border-radius: 9px; padding: 10px 16px; background: var(--overdue); color: #fff; font-size: .875rem; font-weight: 600; }
 :root[data-theme='dark'] .danger { color: #2a1512; }
@@ -282,7 +367,10 @@ kbd {
   background: var(--calm-soft); color: var(--ink-2); text-align: left;
   transition: filter .15s;
 }
-.attn:hover { filter: brightness(.97); }
+.attn { transition: filter .18s var(--ease), transform .18s var(--ease), box-shadow .18s var(--ease); }
+@media (hover: hover) {
+  .attn:hover { filter: brightness(.98); transform: translateY(-1px); box-shadow: var(--lift-1); }
+}
 .attn strong { font-size: 1.375rem; font-weight: 700; letter-spacing: -.7px; line-height: 1; }
 .attn span { font-size: .8125rem; }
 /* The overdue counter is the one that matters, so it gets more room. */
@@ -322,6 +410,10 @@ kbd {
 .group-label:first-child { margin-top: 0; }
 .group-label span { margin-left: 8px; font-weight: 500; letter-spacing: 0; }
 
+.task { transition: background .16s var(--ease); }
+@media (hover: hover) {
+  .task:hover { background: color-mix(in oklab, var(--surface-2) 55%, transparent); }
+}
 .task {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto auto auto;
@@ -337,10 +429,18 @@ kbd {
   width: 21px; height: 21px; padding: 0;
   border: 1.5px solid var(--line-strong); border-radius: 50%;
   background: transparent; color: transparent; font-size: .75rem; line-height: 1;
-  transition: border-color .15s, background .15s;
+  transition: border-color .18s var(--ease), background .18s var(--ease), transform .18s var(--ease);
 }
-.complete:hover { border-color: var(--soon); }
-.task.done .complete { border-color: #8fc4ae; background: #8fc4ae; color: #fff; }
+.complete:hover { border-color: var(--soon); transform: scale(1.08); }
+.task.done .complete {
+  border-color: #8fc4ae; background: #8fc4ae; color: #fff;
+  animation: tick .32s var(--ease-out);
+}
+@keyframes tick {
+  0% { transform: scale(.7); }
+  55% { transform: scale(1.14); }
+  100% { transform: scale(1); }
+}
 
 .task-copy { min-width: 0; display: grid; gap: 4px; }
 .task-copy strong { overflow: hidden; font-size: .875rem; font-weight: 500; text-overflow: ellipsis; white-space: nowrap; }
@@ -401,6 +501,10 @@ kbd {
   --ring: #7fb79e;
   display: flex; align-items: center; justify-content: space-between; gap: 18px;
   min-height: 152px; border: 0; border-radius: 16px; padding: 22px; background: var(--mint);
+  transition: transform .22s var(--ease), box-shadow .22s var(--ease);
+}
+@media (hover: hover) {
+  .project-card:hover { transform: translateY(-2px); box-shadow: var(--lift-2); }
 }
 .project-card.coral { --ring: #dd9d84; background: var(--peach); }
 .project-card.blue { --ring: #8badea; background: var(--blue); }
@@ -470,6 +574,10 @@ kbd {
 .skeleton-row { height: 62px; border-bottom: 1px solid var(--line); background: linear-gradient(90deg, transparent, var(--surface-2), transparent); background-size: 200% 100%; animation: shimmer 1.3s infinite; }
 @keyframes shimmer { from { background-position: 200% 0; } to { background-position: -60% 0; } }
 
+/* Content arrives rather than snapping in, once per view change. */
+.view.active { animation: rise .3s var(--ease-out); }
+@keyframes rise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
 /* ---------------------------------------------------------------------------
    Toast, FAB
    --------------------------------------------------------------------------- */
@@ -479,10 +587,13 @@ kbd {
   display: flex; align-items: center; gap: 14px; max-width: 380px;
   border-radius: 10px; padding: 13px 16px;
   background: var(--ink); color: var(--bg); font-size: .8125rem;
-  opacity: 0; pointer-events: none; transform: translateY(12px); transition: opacity .2s, transform .2s;
-  box-shadow: 0 16px 44px rgb(30 33 31 / 22%);
+  opacity: 0; pointer-events: none; transform: translateY(14px) scale(.97);
+  transition: opacity .26s var(--ease-out), transform .26s var(--ease-out);
+  box-shadow: var(--lift-3);
 }
 .toast.show { opacity: 1; transform: none; pointer-events: auto; }
+.toast button { transition: background .15s var(--ease); }
+.toast button:hover { background: rgb(255 255 255 / 30%); }
 .toast.error { background: var(--overdue); color: #fff; }
 .toast button { border: 0; border-radius: 6px; padding: 4px 10px; background: rgb(255 255 255 / 18%); color: inherit; font-size: .75rem; font-weight: 700; }
 
@@ -494,12 +605,25 @@ kbd {
 
 dialog {
   width: min(500px, calc(100% - 32px));
-  border: 0; border-radius: 16px; padding: 0;
+  border: 0; border-radius: 18px; padding: 0;
   background: var(--surface); color: var(--ink);
-  box-shadow: 0 24px 70px rgb(30 33 31 / 20%);
+  box-shadow: var(--ring), var(--lift-3);
+  transition: opacity .22s var(--ease-out), transform .22s var(--ease-out), overlay .22s allow-discrete, display .22s allow-discrete;
 }
+/* Rises into place instead of appearing. @starting-style is what lets a
+   display:none element animate in at all. */
+dialog[open] { opacity: 1; transform: translateY(0) scale(1); }
+dialog:not([open]) { opacity: 0; transform: translateY(8px) scale(.98); }
+@starting-style { dialog[open] { opacity: 0; transform: translateY(8px) scale(.98); } }
+
 :root[data-theme='dark'] dialog { border: 1px solid var(--line); }
-dialog::backdrop { background: rgb(30 33 31 / 32%); backdrop-filter: blur(2px); }
+dialog::backdrop {
+  background: rgb(30 33 31 / 34%); backdrop-filter: blur(3px);
+  transition: opacity .22s var(--ease-out), display .22s allow-discrete, overlay .22s allow-discrete;
+}
+dialog[open]::backdrop { opacity: 1; }
+dialog:not([open])::backdrop { opacity: 0; }
+@starting-style { dialog[open]::backdrop { opacity: 0; } }
 form, .confirm-body { padding: 26px; }
 .dialog-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 20px; }
 .dialog-heading h2 { margin: 0; font-size: 1.1875rem; letter-spacing: -.4px; }
@@ -517,7 +641,13 @@ input, select { height: 42px; padding: 0 11px; }
 select { appearance: none; padding-right: 30px; background-image: linear-gradient(45deg, transparent 50%, var(--ink-3) 50%), linear-gradient(135deg, var(--ink-3) 50%, transparent 50%); background-position: right 14px center, right 9px center; background-size: 5px 5px; background-repeat: no-repeat; }
 textarea { min-height: 92px; padding: 10px 11px; line-height: 1.55; resize: vertical; }
 input::placeholder, textarea::placeholder { color: var(--ink-3); }
+input, select, textarea { transition: border-color .16s var(--ease), box-shadow .16s var(--ease); }
 input:hover, select:hover, textarea:hover { border-color: var(--ink-3); }
+input:focus, select:focus, textarea:focus {
+  border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft);
+}
+/* The token ring would otherwise sit on top of the focus glow. */
+:where(input, select, textarea):focus-visible { outline: none; }
 .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .form-help { margin: -2px 0 16px; border-radius: 8px; padding: 11px 13px; background: var(--surface-2); color: var(--ink-3); font-size: .75rem; line-height: 1.55; }
 .actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 22px; }
@@ -528,7 +658,13 @@ input:hover, select:hover, textarea:hover { border-color: var(--ink-3); }
 .notes-tabs { display: flex; gap: 16px; margin-bottom: 4px; border-bottom: 1px solid var(--line); }
 .notes-tab { border: 0; border-bottom: 2px solid transparent; padding: 8px 0; background: transparent; color: var(--ink-3); font-size: .8125rem; }
 .notes-tab.active { border-color: var(--accent-line); color: var(--ink); font-weight: 600; }
-.notes-list { max-height: 290px; overflow-y: auto; margin: 0 0 18px; }
+.notes-list {
+  max-height: 290px; overflow-y: auto; margin: 0 0 18px;
+  scrollbar-width: thin; scrollbar-color: var(--line-strong) transparent;
+  overscroll-behavior: contain;
+}
+.notes-list::-webkit-scrollbar { width: 8px; }
+.notes-list::-webkit-scrollbar-thumb { border: 2px solid transparent; border-radius: 999px; background: var(--line-strong); background-clip: content-box; }
 .note { position: relative; padding: 15px 2px; border-bottom: 1px solid var(--line); }
 .note:last-child { border-bottom: 0; }
 .note > div { display: flex; align-items: baseline; gap: 8px; }
@@ -543,6 +679,16 @@ input:hover, select:hover, textarea:hover { border-color: var(--ink-3); }
 .history-dot { width: 7px; height: 7px; margin-top: 6px; border-radius: 50%; background: var(--accent-line); }
 .history-item span { color: var(--ink-2); }
 .history-item b { color: var(--ink); font-weight: 600; }
+
+.account-identity {
+  display: flex; align-items: center; gap: 12px;
+  margin-bottom: 22px; border-radius: 12px; padding: 14px;
+  background: var(--surface-2);
+}
+.account-identity .avatar { width: 38px; height: 38px; font-size: .8125rem; }
+.account-identity div { min-width: 0; display: grid; gap: 2px; }
+.account-identity strong { font-size: .9375rem; }
+.account-identity span:not(.avatar) { overflow: hidden; color: var(--ink-3); font-size: .8125rem; text-overflow: ellipsis; }
 
 .note-entry { position: relative; }
 .note-entry small { position: absolute; right: 10px; bottom: 8px; color: var(--ink-3); font-size: .6875rem; font-weight: 400; }

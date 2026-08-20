@@ -299,8 +299,89 @@ export const profileStore = {
   }
 };
 
+/** Where Supabase should send someone back to after a recovery email. */
+function appUrl() {
+  return `${location.origin}${location.pathname}`;
+}
+
+async function authRequest(path, body, failureMessage, { redirect = false } = {}) {
+  const query = redirect ? `?redirect_to=${encodeURIComponent(appUrl())}` : '';
+  const response = await fetchWithTimeout(`${SUPABASE_URL}/auth/v1/${path}${query}`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(body)
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(payload.msg || payload.error_description || payload.message || failureMessage);
+  return payload;
+}
+
 export const auth = {
   getSession() { return session; },
+
+  /**
+   * Reads a session out of the URL fragment Supabase appends when someone
+   * follows a password-reset link, then clears it from the address bar so the
+   * token is not left in history or copied into a shared link.
+   */
+  adoptSessionFromUrl() {
+    const hash = location.hash.startsWith('#') ? location.hash.slice(1) : '';
+    if (!hash) return null;
+    const params = new URLSearchParams(hash);
+    const accessToken = params.get('access_token');
+    const type = params.get('type');
+    history.replaceState(null, '', appUrl());
+    if (!accessToken || !type) return null;
+
+    storeSession({
+      access_token: accessToken,
+      refresh_token: params.get('refresh_token'),
+      user: { id: null }
+    });
+    return type;
+  },
+
+  /** True when the address may create an account and has not already used it. */
+  async isInvited(email) {
+    const invited = await request('rpc/email_is_invited', {
+      method: 'POST',
+      body: JSON.stringify({ check_email: email })
+    });
+    return invited === true;
+  },
+
+  /**
+   * Returns 'signed-in' when the project has email confirmation switched off
+   * and Supabase handed back a session, or 'confirm-email' when it did not.
+   */
+  async signUp(email, password) {
+    const payload = await authRequest('signup', { email, password },
+      'That account could not be created.', { redirect: true });
+    if (payload.access_token) {
+      storeSession(payload);
+      return 'signed-in';
+    }
+    return 'confirm-email';
+  },
+
+  async sendPasswordReset(email) {
+    await authRequest('recover', { email },
+      'That reset email could not be sent.', { redirect: true });
+  },
+
+  /** Used both by the recovery link and by Account → change password. */
+  async updatePassword(password) {
+    const response = await fetchWithTimeout(`${SUPABASE_URL}/auth/v1/user`, {
+      method: 'PUT',
+      headers: authHeaders(),
+      body: JSON.stringify({ password })
+    });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(payload.msg || payload.message || 'That password could not be saved.');
+    // The user id is the one thing a recovery session starts out missing.
+    if (payload.id && session) storeSession({ ...session, user: { ...session.user, id: payload.id } });
+    return payload;
+  },
 
   async signIn(email, password) {
     const response = await fetchWithTimeout(`${SUPABASE_URL}/auth/v1/token?grant_type=password`, {

@@ -4,6 +4,74 @@ What was wrong, what changed, and what is still open.
 
 ---
 
+# Third pass: accounts and polish
+
+## Account creation
+
+Signing in used to require the administrator to create a Supabase user by hand, copy its
+UUID out of the dashboard, and paste it into an `insert`. Two people meant two trips
+through that, and it also meant somebody other than Michaila or Brady knew their password
+at least once.
+
+Now the administrator invites an address and that is the whole job:
+
+```sql
+insert into public.invitations (email, display_name, role, title, office, accent, sort_order)
+values ('brady@yourcompany.ca', 'Brady', 'member', 'Senior Accountant', 'Charlottetown', 'teal', 2);
+```
+
+The person visits the app, picks **Create your account**, and chooses their own password.
+A trigger on `auth.users` writes their `profiles` row from the invitation and marks it
+claimed. Nobody copies a UUID and nobody else ever knows the password.
+
+**Sign-up is gated, not open.** An address with no invitation is turned away before an
+account is created — the screen asks `public.email_is_invited`, which returns a boolean
+and cannot be used to read the invitation list.
+
+**This closed a real hole.** Every policy read `to authenticated using (true)`, meaning
+*any* Supabase account in the project could read every task, note and activity row
+straight from the REST API. That was survivable only because accounts could not be
+created without the dashboard. Opening sign-up would have made it exploitable, so
+membership is now "has a profile in this workspace", via `public.is_workspace_member()`,
+and every policy is written in terms of it.
+
+Also added, because an account nobody can get back into is not much use:
+
+- **Forgot it?** on the sign-in screen emails a reset link. The reply is the same whether
+  or not the address exists, so it cannot be used to find out who has an account.
+- Following that link opens straight into **Set a new password**. The token arrives in the
+  URL fragment and is cleared from the address bar before anything else runs, so it is not
+  left in history or pasted into a shared link.
+- **Your account** in the sidebar, for changing a password while signed in.
+
+The trigger that provisions profiles swallows its own errors on purpose. A failure there
+would otherwise surface to the person signing up as `Database error saving new user`;
+instead the account is created without a profile, which is a state the app already
+explains, and one insert repairs it.
+
+## Design
+
+Restrained rather than redecorated — the white-and-pastel direction is unchanged.
+
+- **Depth is layered.** Shadows are two-part now: one tight shadow for the edge, one wide
+  and soft for the lift. A single large shadow reads as a drop shadow; two read as depth.
+  On dark the shadows do almost nothing, so depth comes from a hairline ring instead.
+- **One pair of easing curves** for the whole interface. The browser default starts and
+  ends slow, which reads as sluggish on small movements.
+- **Dialogs rise into place** rather than appearing, using `@starting-style` so a
+  `display: none` element can animate in at all. The backdrop fades with them.
+- **The completion tick lands** with a small overshoot instead of switching state.
+- Focus on a text field draws a soft accent ring rather than a hard outline. This also
+  fixed a wobble where focusing an input changed its corner radius from 8px to 6px.
+- Task rows tint on hover, project cards and attention counters lift, pressed buttons
+  move by half a pixel, and each view rises as it opens.
+- `-webkit-font-smoothing: antialiased`, balanced heading wrapping, a styled selection
+  colour, and a thin scrollbar on the notes list.
+
+Everything above stays inside the existing `prefers-reduced-motion` rule.
+
+---
+
 # Second pass
 
 Written against the version at commit `82e17bc`. Everything below this heading is
@@ -160,6 +228,11 @@ mid-sentence.
 
 ## Still open
 
+- **No way to invite someone from inside the app.** The administrator still writes one
+  `insert` in the SQL editor. An admin-only invitations screen is the obvious next step,
+  and the RLS policies for it are already in place.
+- **Nobody can be removed from the app either.** Set `profiles.active = false` in SQL to
+  take someone off the roster.
 - **Projects cannot be edited or deleted.** They can only be created. The database is
   ready for both — there is a rename-cascade trigger and a `projectStore.remove` nobody
   calls — but no interface reaches them. This is the largest remaining gap and the

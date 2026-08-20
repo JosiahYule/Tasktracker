@@ -36,6 +36,7 @@ const dialogs = {
   project: $('#projectDialog'),
   recurring: $('#recurringDialog'),
   notes: $('#notesDialog'),
+  account: $('#accountDialog'),
   confirm: $('#confirmDialog')
 };
 const authScreen = $('#authScreen');
@@ -1292,6 +1293,7 @@ function returnToSignIn(message = '') {
   document.querySelectorAll('dialog[open]').forEach(dialog => dialog.close());
   appShell.hidden = true;
   authScreen.hidden = false;
+  setAuthMode('signin');
   $('#authError').textContent = message;
 }
 
@@ -1305,6 +1307,9 @@ async function startApp() {
     currentProfile = await auth.profile();
     $('#signedInName').textContent = currentProfile.display_name;
     $('#signedInRole').textContent = currentProfile.role;
+    $('#signedInAvatar').textContent = String(currentProfile.display_name || '?').trim().slice(0, 1).toUpperCase();
+    $('#signedInAvatar').className = `avatar ${currentProfile.accent || 'lavender'}`;
+    $('#openAccount').setAttribute('aria-label', `Account settings for ${currentProfile.display_name}`);
     authScreen.hidden = true;
     appShell.hidden = false;
     await loadWorkspace();
@@ -1315,23 +1320,201 @@ async function startApp() {
   }
 }
 
-$('#loginForm').addEventListener('submit', async event => {
+/* --------------------------------------------------------------------------
+   Sign in, create account, reset password
+
+   One card, four modes. Accounts are gated on an invitation, so the sign-up
+   step asks the database whether the address is expected before it creates
+   anything: an uninvited address gets a plain answer rather than an account
+   that can see nothing.
+   -------------------------------------------------------------------------- */
+
+const MIN_PASSWORD = 8;
+
+const AUTH_MODES = {
+  signin: {
+    title: 'Sign in',
+    subtitle: 'Enter your work email to continue.',
+    submit: 'Sign in',
+    busy: 'Signing in…',
+    switchText: 'First time here?',
+    switchAction: 'Create your account',
+    next: 'signup'
+  },
+  signup: {
+    title: 'Create your account',
+    subtitle: 'Choose a password for the email you were invited with.',
+    submit: 'Create account',
+    busy: 'Creating your account…',
+    switchText: 'Already have an account?',
+    switchAction: 'Sign in',
+    next: 'signin'
+  },
+  reset: {
+    title: 'Reset your password',
+    subtitle: 'We will email you a link to set a new one.',
+    submit: 'Send reset link',
+    busy: 'Sending…',
+    switchText: 'Remembered it?',
+    switchAction: 'Back to sign in',
+    next: 'signin'
+  },
+  recover: {
+    title: 'Set a new password',
+    subtitle: 'Choose the password you will use from now on.',
+    submit: 'Save password',
+    busy: 'Saving…',
+    switchText: '',
+    switchAction: 'Cancel',
+    next: 'signin'
+  }
+};
+
+let authMode = 'signin';
+
+function setAuthMode(mode, { keepNote = false } = {}) {
+  authMode = mode;
+  const config = AUTH_MODES[mode];
+  const wantsConfirm = mode === 'signup' || mode === 'recover';
+  const wantsPassword = mode !== 'reset';
+
+  $('#authTitle').textContent = config.title;
+  $('#authSubtitle').textContent = config.subtitle;
+  $('#authSubmit').textContent = config.submit;
+  $('#authSwitchText').textContent = config.switchText;
+  $('#authSwitchButton').textContent = config.switchAction;
+  $('#authSwitchText').hidden = !config.switchText;
+
+  $('#emailField').hidden = mode === 'recover';
+  $('#passwordField').hidden = !wantsPassword;
+  $('#confirmField').hidden = !wantsConfirm;
+  $('#passwordHint').hidden = !wantsConfirm;
+  $('#forgotPassword').hidden = mode !== 'signin';
+
+  // A hidden required control cannot be focused, so the browser would refuse
+  // the submit and explain it only to the console.
+  $('#loginEmail').required = mode !== 'recover';
+  $('#loginPassword').required = wantsPassword;
+  $('#loginConfirm').required = wantsConfirm;
+  $('#loginPassword').autocomplete = mode === 'signin' ? 'current-password' : 'new-password';
+  $('#loginPassword').minLength = wantsConfirm ? MIN_PASSWORD : 0;
+
+  $('#authError').textContent = '';
+  if (!keepNote) {
+    $('#authNote').textContent = '';
+    $('#authNote').hidden = true;
+  }
+  $('#loginPassword').value = '';
+  $('#loginConfirm').value = '';
+}
+
+function showAuthNote(message) {
+  $('#authError').textContent = '';
+  $('#authNote').textContent = message;
+  $('#authNote').hidden = false;
+}
+
+$('#authSwitchButton').addEventListener('click', () => setAuthMode(AUTH_MODES[authMode].next));
+$('#forgotPassword').addEventListener('click', () => setAuthMode('reset'));
+
+$('#authForm').addEventListener('submit', async event => {
   event.preventDefault();
-  const error = $('#authError');
   const button = event.submitter;
-  error.textContent = '';
+  const config = AUTH_MODES[authMode];
+  const email = $('#loginEmail').value.trim();
+  const password = $('#loginPassword').value;
+  const confirmation = $('#loginConfirm').value;
+
+  $('#authError').textContent = '';
+  $('#authNote').hidden = true;
+
+  if ((authMode === 'signup' || authMode === 'recover')) {
+    if (password.length < MIN_PASSWORD) {
+      $('#authError').textContent = `Use at least ${MIN_PASSWORD} characters.`;
+      return;
+    }
+    if (password !== confirmation) {
+      $('#authError').textContent = 'Those two passwords do not match.';
+      return;
+    }
+  }
+
   button.disabled = true;
-  button.textContent = 'Signing in…';
+  button.textContent = config.busy;
 
   try {
-    await auth.signIn($('#loginEmail').value.trim(), $('#loginPassword').value);
-    await startApp();
-    event.target.reset();
-  } catch (loginError) {
-    error.textContent = loginError.message;
+    if (authMode === 'signin') {
+      await auth.signIn(email, password);
+      await startApp();
+      event.target.reset();
+    } else if (authMode === 'signup') {
+      if (!await auth.isInvited(email)) {
+        throw new Error('That email has not been invited, or its account already exists. Ask the workspace administrator, or sign in instead.');
+      }
+      const outcome = await auth.signUp(email, password);
+      if (outcome === 'signed-in') {
+        await startApp();
+        event.target.reset();
+      } else {
+        setAuthMode('signin');
+        showAuthNote('Account created. Check your email for a confirmation link, then sign in.');
+      }
+    } else if (authMode === 'reset') {
+      await auth.sendPasswordReset(email);
+      setAuthMode('signin', { keepNote: true });
+      showAuthNote('If that address has an account, a reset link is on its way.');
+    } else {
+      await auth.updatePassword(password);
+      setAuthMode('signin');
+      showAuthNote('Password saved. Sign in with it.');
+    }
+  } catch (authFailure) {
+    $('#authError').textContent = authFailure.message;
   } finally {
     button.disabled = false;
-    button.textContent = 'Sign in';
+    button.textContent = config.submit;
+  }
+});
+
+$('#openAccount').addEventListener('click', () => {
+  const initial = String(currentProfile?.display_name || '?').trim().slice(0, 1).toUpperCase();
+  $('#accountAvatar').textContent = initial;
+  $('#accountAvatar').className = `avatar ${currentProfile?.accent || 'lavender'}`;
+  $('#accountName').textContent = currentProfile?.display_name || '';
+  $('#accountEmail').textContent = auth.getSession()?.user?.email || '';
+  $('#accountPassword').value = '';
+  $('#accountConfirm').value = '';
+  $('#accountError').textContent = '';
+  openDialog(dialogs.account);
+});
+
+$('#accountForm').addEventListener('submit', async event => {
+  event.preventDefault();
+  const button = event.submitter;
+  const password = $('#accountPassword').value;
+  const error = $('#accountError');
+  error.textContent = '';
+
+  if (password.length < MIN_PASSWORD) {
+    error.textContent = `Use at least ${MIN_PASSWORD} characters.`;
+    return;
+  }
+  if (password !== $('#accountConfirm').value) {
+    error.textContent = 'Those two passwords do not match.';
+    return;
+  }
+
+  button.disabled = true;
+  button.textContent = 'Saving…';
+  try {
+    await auth.updatePassword(password);
+    closeDialog(dialogs.account);
+    showToast('Password changed.');
+  } catch (failure) {
+    error.textContent = failure.message;
+  } finally {
+    button.disabled = false;
+    button.textContent = 'Change password';
   }
 });
 
@@ -1405,4 +1588,15 @@ setInterval(() => {
   render();
 }, 600000);
 
-startApp();
+/**
+ * A password-reset link comes back with a session in the URL fragment and no
+ * user id, which every other path would read as a broken session. Take that
+ * case first and go straight to "set a new password".
+ */
+if (auth.adoptSessionFromUrl() === 'recovery') {
+  setAuthMode('recover');
+  authScreen.hidden = false;
+} else {
+  setAuthMode('signin');
+  startApp();
+}

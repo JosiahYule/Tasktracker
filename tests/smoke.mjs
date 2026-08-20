@@ -172,6 +172,28 @@ await step('the theme cycles through light, dark and auto', async () => {
   return seen.join(' → ');
 });
 
+await step('changing your own password from the account dialog', async () => {
+  await page.click('#openAccount');
+  await page.waitForSelector('#accountDialog[open]');
+  const shown = await page.textContent('#accountEmail');
+  await page.fill('#accountPassword', 'short');
+  await page.fill('#accountConfirm', 'short');
+  await page.click('#accountSubmit');
+  assert(/at least 8/i.test(await page.textContent('#accountError')), 'a five-character password was accepted');
+
+  await page.fill('#accountPassword', 'a-longer-password');
+  await page.fill('#accountConfirm', 'a-different-one');
+  await page.click('#accountSubmit');
+  assert(/do not match/i.test(await page.textContent('#accountError')), 'a mismatch was accepted');
+
+  const before = supabase.passwordUpdates;
+  await page.fill('#accountConfirm', 'a-longer-password');
+  await page.click('#accountSubmit');
+  await page.waitForSelector('#accountDialog[open]', { state: 'detached' });
+  assert(supabase.passwordUpdates === before + 1, 'the password was not sent');
+  return shown;
+});
+
 await step('four requests hitting an expired token trigger one refresh, not four', async () => {
   supabase.accessTokenExpired = true;
   const before = supabase.refreshes;
@@ -193,6 +215,89 @@ await step('a session that cannot be renewed returns to sign-in with an explanat
   const message = (await page.textContent('#authError')).trim();
   assert(message.length > 0, 'sent back to sign-in with no explanation');
   return message;
+});
+
+// --- Account creation ---------------------------------------------------
+// The sign-in screen is showing again after the session tests above.
+
+await step('an uninvited address is turned away before an account is created', async () => {
+  supabase = await installSupabaseStub(page, { invited: ['brady@example.ca'] });
+  await page.click('#authSwitchButton');
+  await page.waitForSelector('#confirmField:not([hidden])');
+  await page.fill('#loginEmail', 'stranger@example.com');
+  await page.fill('#loginPassword', 'a-good-password');
+  await page.fill('#loginConfirm', 'a-good-password');
+  await page.click('#authSubmit');
+  await page.waitForFunction(() => document.querySelector('#authError').textContent.trim().length > 0);
+  assert(supabase.signUps.length === 0, 'an uninvited address reached the signup endpoint');
+  return (await page.textContent('#authError')).slice(0, 60) + '…';
+});
+
+await step('sign-up rejects a short password and a mismatch without calling out', async () => {
+  await page.fill('#loginEmail', 'brady@example.ca');
+  await page.fill('#loginPassword', 'short');
+  await page.fill('#loginConfirm', 'short');
+  await page.click('#authSubmit');
+  assert(/at least 8/i.test(await page.textContent('#authError')), 'a short password was accepted');
+
+  await page.fill('#loginPassword', 'a-good-password');
+  await page.fill('#loginConfirm', 'a-different-one');
+  await page.click('#authSubmit');
+  assert(/do not match/i.test(await page.textContent('#authError')), 'a mismatch was accepted');
+  assert(supabase.signUps.length === 0, 'a rejected form still called signup');
+});
+
+await step('an invited address creates an account and lands in the workspace', async () => {
+  await page.fill('#loginPassword', 'a-good-password');
+  await page.fill('#loginConfirm', 'a-good-password');
+  await page.click('#authSubmit');
+  await page.waitForSelector('#appShell:not([hidden])');
+  assert(supabase.signUps.length === 1, `expected 1 signup, got ${supabase.signUps.length}`);
+  return supabase.signUps[0];
+});
+
+await step('with email confirmation on, sign-up says to check the inbox', async () => {
+  await page.click('#signOut');
+  await page.waitForSelector('#authScreen:not([hidden])');
+  supabase = await installSupabaseStub(page, { invited: ['brady@example.ca'], signUpReturnsSession: false });
+
+  await page.click('#authSwitchButton');
+  await page.fill('#loginEmail', 'brady@example.ca');
+  await page.fill('#loginPassword', 'a-good-password');
+  await page.fill('#loginConfirm', 'a-good-password');
+  await page.click('#authSubmit');
+  await page.waitForSelector('#authNote:not([hidden])');
+  assert(await page.$eval('#appShell', node => node.hidden), 'went into the workspace without a session');
+  assert(await page.textContent('#authTitle') === 'Sign in', 'did not return to the sign-in form');
+  return (await page.textContent('#authNote')).trim();
+});
+
+await step('forgot password sends a reset and says so without confirming the address exists', async () => {
+  await page.click('#forgotPassword');
+  await page.waitForFunction(() => document.querySelector('#passwordField').hidden);
+  await page.fill('#loginEmail', 'brady@example.ca');
+  await page.click('#authSubmit');
+  await page.waitForSelector('#authNote:not([hidden])');
+  assert(supabase.resets.length === 1, 'no reset was requested');
+  const note = (await page.textContent('#authNote')).trim();
+  assert(/if that address/i.test(note), 'the wording confirms whether the account exists');
+  return note;
+});
+
+await step('a recovery link opens "set a new password" and clears the token from the URL', async () => {
+  await page.goto(`${server.url}/?recovery#access_token=recovery-token&refresh_token=r&type=recovery`, { waitUntil: 'domcontentloaded' });
+  supabase = await installSupabaseStub(page);
+  await page.waitForSelector('#authScreen:not([hidden])');
+  assert(await page.textContent('#authTitle') === 'Set a new password', 'did not enter recovery mode');
+  assert(await page.$eval('#emailField', node => node.hidden), 'asked for an email it already knows');
+  assert(!page.url().includes('access_token'), 'left the recovery token in the address bar');
+
+  await page.fill('#loginPassword', 'a-brand-new-password');
+  await page.fill('#loginConfirm', 'a-brand-new-password');
+  await page.click('#authSubmit');
+  await page.waitForSelector('#authNote:not([hidden])');
+  assert(supabase.passwordUpdates === 1, 'the new password was never sent');
+  return (await page.textContent('#authNote')).trim();
 });
 
 await browser.close();

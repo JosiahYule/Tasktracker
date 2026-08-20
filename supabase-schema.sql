@@ -31,6 +31,49 @@ alter table public.profiles add constraint profiles_accent_check
 alter table public.profiles enable row level security;
 
 -- ---------------------------------------------------------------------------
+-- invitations
+--
+-- Who is allowed to create an account, and what their profile should say when
+-- they do. The administrator adds a row per teammate; that person then sets
+-- their own password in the app. Nobody has to copy user UUIDs by hand, and an
+-- email that is not listed here cannot join the workspace.
+-- ---------------------------------------------------------------------------
+
+create table if not exists public.invitations (
+  email text primary key,
+  display_name text not null,
+  role text not null default 'member' check (role in ('member', 'admin')),
+  title text not null default '',
+  office text not null default '',
+  accent text not null default 'lavender',
+  sort_order integer not null default 100,
+  created_at timestamptz not null default now(),
+  claimed_at timestamptz,
+  claimed_by uuid references auth.users(id) on delete set null
+);
+
+alter table public.invitations drop constraint if exists invitations_accent_check;
+alter table public.invitations add constraint invitations_accent_check
+  check (accent in ('coral', 'teal', 'blue', 'lavender', 'amber', 'rose'));
+
+-- Addresses are compared case-insensitively, so store them one way.
+create or replace function public.normalise_invitation_email()
+returns trigger language plpgsql as $$
+begin
+  new.email = lower(trim(new.email));
+  return new;
+end;
+$$;
+
+drop trigger if exists invitations_normalise_email on public.invitations;
+create trigger invitations_normalise_email before insert or update on public.invitations
+for each row execute function public.normalise_invitation_email();
+
+update public.invitations set email = lower(trim(email)) where email <> lower(trim(email));
+
+alter table public.invitations enable row level security;
+
+-- ---------------------------------------------------------------------------
 -- projects
 -- ---------------------------------------------------------------------------
 
@@ -316,6 +359,83 @@ create trigger tasks_log_activity_trigger after insert or update on public.tasks
 for each row execute function public.tasks_log_activity();
 
 -- ---------------------------------------------------------------------------
+-- Account creation
+--
+-- Signing up is gated on an invitation. When an invited address creates an
+-- account, its profile is written for it and the invitation is marked claimed.
+-- An address with no invitation gets an auth user with no profile, which every
+-- policy below refuses, and the app tells them to ask the administrator.
+-- ---------------------------------------------------------------------------
+
+create or replace function public.handle_new_user()
+returns trigger language plpgsql security definer set search_path = public as $$
+declare
+  invite public.invitations%rowtype;
+begin
+  select * into invite
+  from public.invitations
+  where email = lower(trim(new.email)) and claimed_at is null;
+
+  if not found then
+    return new;
+  end if;
+
+  insert into public.profiles (id, display_name, role, title, office, accent, sort_order)
+  values (new.id, invite.display_name, invite.role, invite.title, invite.office, invite.accent, invite.sort_order)
+  on conflict (id) do nothing;
+
+  update public.invitations
+  set claimed_at = now(), claimed_by = new.id
+  where email = invite.email;
+
+  return new;
+exception when others then
+  -- Never let a provisioning problem turn into "Database error saving new
+  -- user". The account is created without a profile, which is a state the app
+  -- already explains, and the administrator can repair it with one insert.
+  raise warning 'handle_new_user failed for %: %', new.email, sqlerrm;
+  return new;
+end;
+$$;
+
+drop trigger if exists on_auth_user_created on auth.users;
+create trigger on_auth_user_created after insert on auth.users
+for each row execute function public.handle_new_user();
+
+/*
+ * Lets the sign-up screen say "that address has not been invited" before it
+ * creates anything. Returns a boolean and nothing else, so it cannot be used
+ * to read the invitation list.
+ */
+create or replace function public.email_is_invited(check_email text)
+returns boolean language sql security definer set search_path = public stable as $$
+  select exists (
+    select 1 from public.invitations
+    where email = lower(trim(check_email)) and claimed_at is null
+  );
+$$;
+
+revoke all on function public.email_is_invited(text) from public;
+grant execute on function public.email_is_invited(text) to anon, authenticated;
+
+/*
+ * Membership is having a profile row, not merely holding a token. Every policy
+ * below is written in terms of this, so an account that signed up without an
+ * invitation can read nothing.
+ */
+create or replace function public.is_workspace_member()
+returns boolean language sql security definer set search_path = public stable as $$
+  select exists (select 1 from public.profiles where id = auth.uid());
+$$;
+
+create or replace function public.is_workspace_admin()
+returns boolean language sql security definer set search_path = public stable as $$
+  select exists (
+    select 1 from public.profiles where id = auth.uid() and role = 'admin'
+  );
+$$;
+
+-- ---------------------------------------------------------------------------
 -- Row level security
 -- ---------------------------------------------------------------------------
 
@@ -339,56 +459,60 @@ drop policy if exists "Signed-in users can read notes" on public.notes;
 drop policy if exists "Signed-in users can create notes" on public.notes;
 drop policy if exists "Authors and admins can delete notes" on public.notes;
 drop policy if exists "Signed-in users can read activity" on public.task_activity;
+drop policy if exists "Admins can read invitations" on public.invitations;
+drop policy if exists "Admins can manage invitations" on public.invitations;
 
 -- Every signed-in user can see the roster. The old policy exposed only your own
 -- row, which is why the team list and the assignee menus had to be hardcoded.
 create policy "Signed-in users can read profiles"
-on public.profiles for select to authenticated using (true);
+on public.profiles for select to authenticated using (public.is_workspace_member());
 
 create policy "Signed-in users can read tasks"
-on public.tasks for select to authenticated using (true);
+on public.tasks for select to authenticated using (public.is_workspace_member());
 
 create policy "Signed-in users can create tasks"
-on public.tasks for insert to authenticated with check (true);
+on public.tasks for insert to authenticated with check (public.is_workspace_member());
 
 create policy "Signed-in users can update tasks"
-on public.tasks for update to authenticated using (true) with check (true);
+on public.tasks for update to authenticated using (public.is_workspace_member()) with check (public.is_workspace_member());
 
 -- Everyday deletion is a soft delete (deleted_at), which is what makes Undo
 -- work. Permanent removal is an admin action.
 create policy "Admins can delete tasks"
-on public.tasks for delete to authenticated using (
-  exists (select 1 from public.profiles where profiles.id = auth.uid() and profiles.role = 'admin')
-);
+on public.tasks for delete to authenticated using (public.is_workspace_admin());
 
 create policy "Signed-in users can read projects"
-on public.projects for select to authenticated using (true);
+on public.projects for select to authenticated using (public.is_workspace_member());
 
 create policy "Signed-in users can create projects"
-on public.projects for insert to authenticated with check (true);
+on public.projects for insert to authenticated with check (public.is_workspace_member());
 
 create policy "Signed-in users can update projects"
-on public.projects for update to authenticated using (true) with check (true);
+on public.projects for update to authenticated using (public.is_workspace_member()) with check (public.is_workspace_member());
 
 create policy "Signed-in users can delete projects"
-on public.projects for delete to authenticated using (true);
+on public.projects for delete to authenticated using (public.is_workspace_member());
 
 create policy "Signed-in users can read notes"
-on public.notes for select to authenticated using (true);
+on public.notes for select to authenticated using (public.is_workspace_member());
 
 create policy "Signed-in users can create notes"
-on public.notes for insert to authenticated with check (author_id = auth.uid());
+on public.notes for insert to authenticated
+with check (author_id = auth.uid() and public.is_workspace_member());
 
 create policy "Authors and admins can delete notes"
 on public.notes for delete to authenticated using (
-  author_id = auth.uid() or exists (
-    select 1 from public.profiles
-    where profiles.id = auth.uid() and profiles.role = 'admin'
-  )
+  author_id = auth.uid() or public.is_workspace_admin()
 );
 
 create policy "Signed-in users can read activity"
-on public.task_activity for select to authenticated using (true);
+on public.task_activity for select to authenticated using (public.is_workspace_member());
+
+-- Nobody touches the invitation list through the API except an administrator.
+-- Everyone else goes through public.email_is_invited, which returns a boolean.
+create policy "Admins can manage invitations"
+on public.invitations for all to authenticated
+using (public.is_workspace_admin()) with check (public.is_workspace_admin());
 
 -- ---------------------------------------------------------------------------
 -- Backfill
@@ -403,13 +527,23 @@ from public.profiles pr where pr.display_name = t.assignee and t.assignee_id is 
 update public.tasks set completed_at = updated_at
 where completed and completed_at is null;
 
+-- Anyone already using the workspace keeps working: record their invitation as
+-- claimed so the roster and the invitation list agree with each other.
+insert into public.invitations (email, display_name, role, title, office, accent, sort_order, claimed_at, claimed_by)
+select lower(trim(users.email)), profiles.display_name, profiles.role, profiles.title,
+       profiles.office, profiles.accent, profiles.sort_order, now(), profiles.id
+from public.profiles
+join auth.users on users.id = profiles.id
+where users.email is not null
+on conflict (email) do nothing;
+
 -- ---------------------------------------------------------------------------
--- Confirm setup. Expect five rows: notes, profiles, projects, task_activity,
--- tasks.
+-- Confirm setup. Expect six rows: invitations, notes, profiles, projects,
+-- task_activity, tasks.
 -- ---------------------------------------------------------------------------
 
 select schemaname, tablename
 from pg_tables
 where schemaname = 'public'
-  and tablename in ('notes', 'profiles', 'projects', 'task_activity', 'tasks')
+  and tablename in ('invitations', 'notes', 'profiles', 'projects', 'task_activity', 'tasks')
 order by tablename;
