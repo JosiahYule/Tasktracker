@@ -46,7 +46,7 @@ const appShell = $('#appShell');
 
 const DEFAULT_PEOPLE = [
   { id: null, display_name: 'Michaila', role: 'member', title: 'Controller', office: 'Halifax', accent: 'coral', active: true },
-  { id: null, display_name: 'Brady', role: 'member', title: 'Senior Accountant', office: 'Charlottetown', accent: 'teal', active: true }
+  { id: null, display_name: 'Brady', role: 'member', title: 'Senior Accountant', office: 'Charlottetown', accent: 'rose', active: true }
 ];
 
 /* --------------------------------------------------------------------------
@@ -139,7 +139,7 @@ function personFor(name) {
 const PERSON_ACCENTS = new Set(['coral', 'teal', 'blue', 'lavender', 'amber', 'rose']);
 const PERSON_NAME_ACCENTS = new Map([
   ['michaila', 'coral'],
-  ['brady', 'teal']
+  ['brady', 'rose']
 ]);
 
 function personAccent(name) {

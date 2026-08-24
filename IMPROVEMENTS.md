@@ -49,7 +49,7 @@ Now the administrator invites an address and that is the whole job:
 
 ```sql
 insert into public.invitations (email, display_name, role, title, office, accent, sort_order)
-values ('brady@yourcompany.ca', 'Brady', 'member', 'Senior Accountant', 'Charlottetown', 'teal', 2);
+values ('brady@yourcompany.ca', 'Brady', 'member', 'Senior Accountant', 'Charlottetown', 'rose', 2);
 ```
 
 The person visits the app, picks **Create your account**, and chooses their own password.

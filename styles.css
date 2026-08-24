@@ -328,7 +328,7 @@ button { cursor: pointer; }
 .avatar.rose { background: var(--rose); color: #93445e; }
 
 /* Assignee colour is repeated at the point of work, not only in the roster.
-   Michaila's coral and Brady's teal remain recognisable even while scanning a
+   Michaila's coral and Brady's rose remain recognisable even while scanning a
    long list where the initials themselves are easy to miss. */
 .task { --person-color: var(--lavender); --person-ink: var(--accent); }
 .task.assignee-coral { --person-color: var(--peach); --person-ink: #b36a50; }
