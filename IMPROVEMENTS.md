@@ -4,6 +4,89 @@ What was wrong, what changed, and what is still open.
 
 ---
 
+# Fifth pass: the visual layer
+
+The app worked and read cleanly, but it looked like an internal tool rather than a product.
+Five things were doing the damage, and none of them were the palette.
+
+## The list did not line up
+
+Task rows used `auto auto auto` for the due date, status, assignee and controls, so every
+row put its metadata wherever the task name happened to stop. Ten rows meant ten different
+right-hand edges. The list now has fixed tracks — 108px for the due date, 84px for status,
+30px for the avatar, 104px for the controls — and `.task-tags` picks those tracks up with
+`grid-template-columns: subgrid`, so the two chips inside it stay on the same rails as
+everything else. The eye runs down four straight columns instead of chasing metadata.
+
+Row controls became glyphs at the same time. **Notes**, **Edit** and a delete cross cost
+more width in words than the metadata they sat beside, and the label was read once.
+
+## There were no surfaces
+
+Everything sat on flat white: sidebar, page and content were within a few percent of each
+other, so nothing was in front of anything. There are three grounds now — the rail recedes,
+a warm paper canvas holds the page, white panels carry the work. Warm rather than the usual
+cool grey, which suits an accounting workspace and is a choice rather than a default.
+
+This is what fixed dark mode too. The old rail was `#171a18` against a `#131614` page,
+a difference you had to look for.
+
+## The overview was one long column
+
+Two full-width blocks stacked down a 1440px screen, with the right half of the page empty
+below the fold. It splits 62/38 now: the task list is where the day is spent, the project
+grid is only checked. The attention band deliberately ignores the split and spans both
+columns, because the count that decides what to do first should not be stuck in one of them.
+
+## Three pastel tiles
+
+The overdue, due-today and due-this-week counters were three rounded pastel rectangles —
+the most templated thing on the page, and the colour was decorative because all three had
+it. They are one instrument now: a single panel divided by hairlines, each segment still a
+live filter, only overdue carrying colour, and overdue given more width than its
+neighbours because it is the only one asking for something.
+
+## Sign in had no card
+
+Type floating on a wash that was too faint to read as intentional. It is a card with an
+edge and a shadow now, on a ground with two blooms instead of three.
+
+## Also in this pass
+
+- **Icons.** Five for navigation, three for row controls, drawn once into a sprite in
+  `index.html` and referenced by `<use>`. One stroke weight, `currentColor`, so they take
+  the state colour of whatever holds them.
+- **The dark palette is one definition again.** It used to be written out twice — once for
+  `[data-theme='dark']` and again inside `prefers-color-scheme` for `[data-theme='auto']`,
+  fifty lines that had to stay in step by hand. Each theme now sets `color-scheme` and
+  nothing else, and every token is a single `light-dark()` pair. This closes the last item
+  on the "still open" list below.
+- **Person colours are paired.** Each pastel now ships with the ink that stays legible on
+  it (`--peach` / `--on-peach`), which replaced a set of hardcoded hex values and a blanket
+  `color: var(--ink)` override that flattened every avatar in dark mode.
+- **The team panels stopped leaving holes.** In a narrow column the row controls claimed a
+  line of their own, so every task in a team panel had a band of empty space under it. They
+  share the line with the chips now.
+- **Variable Inter with optical sizing**, a weight ladder that uses 650 for panel headings,
+  and tracking that tightens as size grows.
+- **The schedule got the same panel as every other list.** It is the one list with no
+  `.card` wrapper in the markup, so it had been sitting on bare canvas.
+- Segmented Open/Completed/All rather than three underlines that never touch; a search
+  glyph and a styled clear button, since the user-agent cross is blue on a warm palette;
+  a chevron drawn as SVG instead of two stacked linear-gradients; one scrollbar treatment
+  for the whole app; the character counter moved clear of the resize grip.
+
+Nothing here changed behaviour. `npm test` covers the same 25 checks and passes unchanged.
+
+**On the browser floor.** `light-dark()` and `subgrid` are the two new requirements. Both
+sit inside the floor the app already had: `@starting-style` for the dialogs, container
+queries for the task rows, and `color-mix()` throughout already meant Chrome 117, Safari
+17.4 and Firefox 129. There is no fallback palette on purpose — writing the light values a
+second time would put the stylesheet straight back into the two-copies problem this pass
+just removed, on a branch that no supported browser takes.
+
+---
+
 # Fourth pass: editing a repeating task
 
 A recurring task could be created and deleted but never changed. Getting the frequency
@@ -279,10 +362,6 @@ mid-sentence.
 - **The `tasks.project` text column is still the value the app writes.** `project_id` is
   maintained alongside it by a trigger for integrity. Moving the app to write
   `project_id` directly would be cleaner and is a contained follow-up.
-- **The dark palette is written out twice**, once for `[data-theme='dark']` and again
-  inside the `prefers-color-scheme` block for `[data-theme='auto']`. Roughly fifty lines
-  that have to stay in step by hand. CSS `light-dark()` would collapse them into one
-  definition per token; it is a wide diff for no behaviour change, so it was left alone.
 - **The test suite is a smoke suite.** It drives the interface against a stub. It does
   not exercise row level security, the triggers, or the SQL itself, which would need a
   seeded Supabase branch.

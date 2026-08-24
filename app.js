@@ -519,11 +519,20 @@ function noteTotal(type, id) {
   return noteCounts.get(noteKey(type, id)) || 0;
 }
 
+/** One row control, drawn from the sprite in index.html. */
+function rowButton(icon, label, { classes = '', attrs = '', badge = '' } = {}) {
+  return `<button class="row-button ${classes}" title="${label}" aria-label="${label}"${attrs ? ` ${attrs}` : ''}><svg viewBox="0 0 24 24" class="ico" aria-hidden="true"><use href="#i-${icon}" /></svg>${badge}</button>`;
+}
+
 function notesButton(type, id) {
   const total = noteTotal(type, id);
   // A note count is information and stays visible; an empty Notes button is
   // just a control, so it waits for hover along with Edit and Delete.
-  return `<button class="notes-button${total ? ' has-notes' : ''}" data-notes-type="${type}" data-notes-id="${id}">Notes${total ? ` <b>${total}</b>` : ''}</button>`;
+  return rowButton('note', total ? `Notes (${total})` : 'Notes', {
+    classes: `notes-button${total ? ' has-notes' : ''}`,
+    attrs: `data-notes-type="${type}" data-notes-id="${id}"`,
+    badge: total ? `<b>${total}</b>` : ''
+  });
 }
 
 /**
@@ -547,7 +556,7 @@ function taskMarkup(task, { compact = false } = {}) {
     <div class="task-copy"><strong>${safe(task.name)}</strong><span class="task-meta">${meta}</span></div>
     <div class="task-tags"><span class="due-chip" data-state="${state}">${safe(due.label)}</span>${status}</div>
     ${avatar(task.assignee)}
-    ${compact ? '' : `<div class="task-tools">${notesButton('task', task.id)}<button class="edit">Edit</button><button class="delete" aria-label="Delete ${safe(task.name)}">×</button></div>`}
+    ${compact ? '' : `<div class="task-tools">${notesButton('task', task.id)}${rowButton('edit', `Edit ${safe(task.name)}`, { classes: 'edit' })}${rowButton('trash', `Delete ${safe(task.name)}`, { classes: 'delete' })}</div>`}
     ${!compact && task.note ? `<p class="task-note">${safe(task.note)}</p>` : ''}
   </article>`;
 }
@@ -799,9 +808,9 @@ function render() {
           ${avatar(task.assignee)}
           <div class="recurring-tools">
             ${notesButton('task', task.id)}
-            <button class="edit">Edit</button>
-            <button class="link recurring-toggle">${task.paused ? 'Resume' : 'Pause'}</button>
-            <button class="delete" aria-label="Delete recurring task ${safe(task.name)}">×</button>
+            ${rowButton('edit', `Edit ${safe(task.name)}`, { classes: 'edit' })}
+            <button class="recurring-toggle">${task.paused ? 'Resume' : 'Pause'}</button>
+            ${rowButton('trash', `Delete recurring task ${safe(task.name)}`, { classes: 'delete' })}
           </div>
         </article>`;
       }).join('')
