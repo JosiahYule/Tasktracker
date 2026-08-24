@@ -12,7 +12,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="styles.css?v=15" />
+    <link rel="stylesheet" href="styles.css?v=18" />
   </head>
   <body>
     <a class="skip-link" href="#mainContent">Skip to content</a>
@@ -49,7 +49,7 @@
 
     <div class="app-shell" id="appShell" hidden>
       <aside class="sidebar">
-        <div class="brand">Tasktracker</div>
+        <div class="brand"><span class="brand-mark" aria-hidden="true"></span><span>Tasktracker</span></div>
         <nav aria-label="Main navigation" id="mainNav">
           <!-- Only overdue work carries a badge. Counting everything made four
                numbers compete when one of them is the one worth acting on. -->
@@ -189,7 +189,7 @@
         <div class="dialog-heading"><h2 id="projectDialogTitle">New project</h2><button type="button" class="icon" data-close="projectDialog" aria-label="Close">×</button></div>
         <label>Project name<input id="projectName" required maxlength="80" placeholder="e.g. Year-end audit" /></label>
         <label>Description<textarea id="projectDescription" required maxlength="160" placeholder="What is this project for?"></textarea></label>
-        <div class="field-row"><label>Due date<input id="projectDueDate" type="date" required /></label><label>Colour<select id="projectColor"><option value="coral">Peach</option><option value="blue">Blue</option><option value="teal">Mint</option><option value="lavender">Lavender</option></select></label></div>
+        <div class="field-row"><label>Due date<input id="projectDueDate" type="date" required /></label><label>Colour<select id="projectColor"><option value="coral">Peach</option><option value="blue">Blue</option><option value="teal">Mint</option><option value="lavender">Lavender</option><option value="amber">Butter</option><option value="rose">Rose</option></select></label></div>
         <div class="actions"><button type="button" data-close="projectDialog">Cancel</button><button type="submit" class="primary">Create project</button></div>
       </form>
     </dialog>
@@ -233,6 +233,6 @@
 
     <div class="toast" id="toast" role="status" aria-live="polite"><span id="toastMessage"></span><button type="button" id="toastAction" hidden>Undo</button></div>
 
-    <script type="module" src="app.js?v=15"></script>
+    <script type="module" src="app.js?v=18"></script>
   </body>
 </html>

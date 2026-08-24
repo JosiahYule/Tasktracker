@@ -136,10 +136,22 @@ function personFor(name) {
   return people.find(person => person.display_name === name);
 }
 
+const PERSON_ACCENTS = new Set(['coral', 'teal', 'blue', 'lavender', 'amber', 'rose']);
+const PERSON_NAME_ACCENTS = new Map([
+  ['michaila', 'coral'],
+  ['brady', 'teal']
+]);
+
+function personAccent(name) {
+  const assignedAccent = PERSON_NAME_ACCENTS.get(String(name || '').trim().toLowerCase());
+  if (assignedAccent) return assignedAccent;
+  const accent = personFor(name)?.accent;
+  return PERSON_ACCENTS.has(accent) ? accent : 'lavender';
+}
+
 function avatar(name) {
-  const person = personFor(name);
   const initials = String(name || '?').trim().slice(0, 1).toUpperCase();
-  return `<span class="avatar ${safe(person?.accent || 'lavender')}" title="${safe(name)}">${safe(initials)}</span>`;
+  return `<span class="avatar ${personAccent(name)}" title="${safe(name)}">${safe(initials)}</span>`;
 }
 
 function relativeTime(value) {
@@ -530,7 +542,7 @@ function taskMarkup(task, { compact = false } = {}) {
     ? ''
     : `<span class="status ${safe(task.status)}">${statusLabel(task.status)}</span>`;
 
-  return `<article class="task ${task.completed ? 'done' : ''} ${compact ? 'compact' : ''}" data-id="${task.id}" data-due="${state}" data-priority="${safe(task.priority || 'normal')}">
+  return `<article class="task assignee-${personAccent(task.assignee)} ${task.completed ? 'done' : ''} ${compact ? 'compact' : ''}" data-id="${task.id}" data-due="${state}" data-priority="${safe(task.priority || 'normal')}">
     <button class="complete" role="checkbox" aria-checked="${task.completed}" aria-label="${task.completed ? 'Reopen' : 'Complete'} ${safe(task.name)}">✓</button>
     <div class="task-copy"><strong>${safe(task.name)}</strong><span class="task-meta">${meta}</span></div>
     <div class="task-tags"><span class="due-chip" data-state="${state}">${safe(due.label)}</span>${status}</div>
@@ -798,7 +810,7 @@ function render() {
   $('#teamList').innerHTML = members.map(person => {
     const name = person.display_name;
     const open = sortTasks(tasks.filter(task => !task.completed && task.assignee === name));
-    return `<section class="card team-card">
+    return `<section class="card team-card person-${personAccent(name)}">
       <div class="team-heading">${avatar(name)}<div><h2>${safe(name)}</h2><p>${safe([person.title, person.office].filter(Boolean).join(' · '))}</p></div></div>
       ${open.map(task => taskMarkup(task)).join('') || emptyState('No open tasks', 'Nothing is assigned right now.')}
     </section>`;
