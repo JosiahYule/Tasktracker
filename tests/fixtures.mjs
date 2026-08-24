@@ -17,7 +17,7 @@ export function day(offset) {
 
 export const profiles = [
   { id: 'u-1', display_name: 'Michaila', role: 'member', title: 'Controller', office: 'Halifax', accent: 'coral', active: true, sort_order: 1 },
-  { id: 'u-2', display_name: 'Brady', role: 'member', title: 'Senior Accountant', office: 'Charlottetown', accent: 'teal', active: true, sort_order: 2 },
+  { id: 'u-2', display_name: 'Brady', role: 'member', title: 'Senior Accountant', office: 'Charlottetown', accent: 'rose', active: true, sort_order: 2 },
   { id: 'u-3', display_name: 'Avery', role: 'admin', title: 'Administrator', office: 'Halifax', accent: 'lavender', active: true, sort_order: 3 }
 ];
 

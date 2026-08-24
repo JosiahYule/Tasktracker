@@ -47,6 +47,8 @@
   --lift-2: 0 2px 4px rgb(30 33 31 / 6%), 0 12px 28px -8px rgb(30 33 31 / 12%);
   --lift-3: 0 4px 8px rgb(30 33 31 / 8%), 0 32px 64px -16px rgb(30 33 31 / 22%);
   --ring: 0 0 0 1px rgb(30 33 31 / 6%);
+  --sidebar-bg: #fbfbfa;
+  --accent-glow: rgb(98 87 164 / 18%);
 
   color-scheme: light;
   font-family: Inter, ui-sans-serif, system-ui, sans-serif;
@@ -92,6 +94,8 @@
   --lift-2: 0 2px 6px rgb(0 0 0 / 40%), 0 12px 28px -10px rgb(0 0 0 / 50%);
   --lift-3: 0 4px 10px rgb(0 0 0 / 45%), 0 32px 64px -16px rgb(0 0 0 / 65%);
   --ring: 0 0 0 1px rgb(255 255 255 / 8%);
+  --sidebar-bg: #171a18;
+  --accent-glow: rgb(169 156 223 / 18%);
 
   color-scheme: dark;
 }
@@ -130,6 +134,8 @@
     --lift-2: 0 2px 6px rgb(0 0 0 / 40%), 0 12px 28px -10px rgb(0 0 0 / 50%);
     --lift-3: 0 4px 10px rgb(0 0 0 / 45%), 0 32px 64px -16px rgb(0 0 0 / 65%);
     --ring: 0 0 0 1px rgb(255 255 255 / 8%);
+    --sidebar-bg: #171a18;
+    --accent-glow: rgb(169 156 223 / 18%);
 
     color-scheme: dark;
   }
@@ -186,7 +192,9 @@ button { cursor: pointer; }
 .auth-screen {
   min-height: 100svh; display: grid; place-items: center; padding: 24px;
   background:
-    radial-gradient(60rem 40rem at 50% -10%, var(--accent-soft), transparent 65%),
+    radial-gradient(42rem 30rem at 15% 0%, var(--mint), transparent 65%),
+    radial-gradient(44rem 32rem at 90% 10%, var(--blue), transparent 68%),
+    radial-gradient(38rem 30rem at 55% 105%, var(--peach), transparent 66%),
     var(--bg);
 }
 .auth-screen[hidden], .app-shell[hidden] { display: none; }
@@ -196,9 +204,13 @@ button { cursor: pointer; }
   font-size: 1.125rem; font-weight: 700; letter-spacing: -.5px;
 }
 .auth-mark {
-  width: 26px; height: 26px; border-radius: 8px;
+  width: 26px; height: 26px; display: grid; place-items: center; border-radius: 8px;
   background: linear-gradient(150deg, var(--accent), color-mix(in oklab, var(--accent) 65%, #d9c9ff));
   box-shadow: var(--lift-1);
+}
+.auth-mark::after, .brand-mark::after {
+  content: ''; width: 8px; height: 4px; border: solid #fff; border-width: 0 0 2px 2px;
+  transform: translateY(-1px) rotate(-45deg);
 }
 .auth-form-heading { margin-bottom: 26px; }
 .auth-card h1 { margin: 0 0 8px; font-size: 1.625rem; letter-spacing: -.9px; }
@@ -235,17 +247,25 @@ button { cursor: pointer; }
 /* ---------------------------------------------------------------------------
    Shell
 
-   The sidebar sits on the same white as the page with no divider, so the whole
-   window reads as one surface.
+   A barely tinted rail and hairline divide navigation from working content
+   without making the workspace feel boxed in.
    --------------------------------------------------------------------------- */
 
 .sidebar {
   position: fixed; inset: 0 auto 0 0; z-index: 10;
   width: 236px; padding: 34px 16px 24px;
   display: flex; flex-direction: column;
-  background: var(--bg);
+  border-right: 1px solid var(--line); background: var(--sidebar-bg);
 }
-.brand { padding: 0 12px; margin-bottom: 34px; font-size: 1.1875rem; font-weight: 700; letter-spacing: -.5px; }
+.brand {
+  display: flex; align-items: center; gap: 10px; padding: 0 10px; margin-bottom: 34px;
+  font-size: 1.1875rem; font-weight: 700; letter-spacing: -.6px;
+}
+.brand-mark {
+  width: 27px; height: 27px; flex: 0 0 auto; display: grid; place-items: center;
+  border-radius: 8px; background: linear-gradient(145deg, #7569ba, var(--accent));
+  box-shadow: 0 5px 14px var(--accent-glow), inset 0 1px rgb(255 255 255 / 22%);
+}
 .sidebar nav { display: grid; gap: 2px; }
 .nav-item {
   display: flex; align-items: center; justify-content: space-between; gap: 8px;
@@ -254,14 +274,14 @@ button { cursor: pointer; }
   text-align: left; transition: background .15s, color .15s;
 }
 .nav-item:hover { background: var(--surface-2); color: var(--ink); }
-.nav-item.active { background: var(--lavender); color: var(--accent); font-weight: 600; }
+.nav-item.active { background: var(--blue); color: var(--ink); font-weight: 600; }
 .nav-count {
   min-width: 22px; padding: 2px 7px; border-radius: 999px;
   background: var(--calm-soft); color: var(--ink-3);
   font-size: .6875rem; font-weight: 600; text-align: center;
 }
 .nav-count[data-tone='overdue'] { background: var(--overdue-soft); color: var(--overdue); }
-.nav-item.active .nav-count { background: var(--surface); color: var(--accent); }
+.nav-item.active .nav-count { background: var(--surface); color: #496ca9; }
 .nav-item.active .nav-count[data-tone='overdue'] { background: var(--overdue-soft); color: var(--overdue); }
 
 .people { margin-top: 30px; padding: 0 12px; }
@@ -307,6 +327,18 @@ button { cursor: pointer; }
 .avatar.amber { background: var(--amber); color: #8a5a15; }
 .avatar.rose { background: var(--rose); color: #93445e; }
 
+/* Assignee colour is repeated at the point of work, not only in the roster.
+   Michaila's coral and Brady's rose remain recognisable even while scanning a
+   long list where the initials themselves are easy to miss. */
+.task { --person-color: var(--lavender); --person-ink: var(--accent); }
+.task.assignee-coral { --person-color: var(--peach); --person-ink: #b36a50; }
+.task.assignee-teal { --person-color: var(--mint); --person-ink: #4d9277; }
+.task.assignee-blue { --person-color: var(--blue); --person-ink: #6384be; }
+.task.assignee-lavender { --person-color: var(--lavender); --person-ink: var(--accent); }
+.task.assignee-amber { --person-color: var(--amber); --person-ink: #b27b2d; }
+.task.assignee-rose { --person-color: var(--rose); --person-ink: #b46079; }
+.task .complete { border-color: color-mix(in oklab, var(--person-ink) 48%, var(--line-strong)); }
+
 /* The tinted avatar backgrounds go dark, so the initials have to go light. */
 :root[data-theme='dark'] .avatar { color: var(--ink); }
 @media (prefers-color-scheme: dark) {
@@ -337,11 +369,11 @@ main { min-height: 100vh; margin-left: 236px; padding: 34px 44px 96px 34px; max-
 .primary {
   display: inline-flex; align-items: center; gap: 8px;
   border: 0; border-radius: 9px; padding: 10px 17px;
-  background: var(--accent); color: #fff; font-size: .875rem; font-weight: 600;
+  background: linear-gradient(145deg, color-mix(in oklab, var(--accent) 86%, white), var(--accent)); color: #fff; font-size: .875rem; font-weight: 600;
   box-shadow: var(--lift-1);
   transition: filter .18s var(--ease), box-shadow .18s var(--ease), transform .12s var(--ease);
 }
-.primary:hover { filter: brightness(1.1); box-shadow: var(--lift-2); }
+.primary:hover { filter: brightness(1.06); box-shadow: var(--lift-2), 0 8px 22px var(--accent-glow); }
 :root[data-theme='dark'] .primary { color: #16121f; }
 .danger { border: 0; border-radius: 9px; padding: 10px 16px; background: var(--overdue); color: #fff; font-size: .875rem; font-weight: 600; }
 :root[data-theme='dark'] .danger { color: #2a1512; }
@@ -479,7 +511,7 @@ kbd {
   background: transparent; color: var(--ink-3); font-size: .75rem; font-weight: 600; white-space: nowrap;
 }
 .notes-button:hover, .edit:hover { background: var(--surface-2); color: var(--accent); }
-.notes-button b { display: inline-grid; min-width: 17px; height: 17px; place-items: center; border-radius: 50%; background: var(--lavender); color: var(--accent); font-size: .6875rem; }
+.notes-button b { display: inline-grid; min-width: 17px; height: 17px; place-items: center; border-radius: 50%; background: var(--mint); color: var(--soon); font-size: .6875rem; }
 .delete { border: 0; border-radius: 7px; padding: 3px 8px; background: transparent; color: var(--ink-3); font-size: 1.125rem; line-height: 1; }
 .delete:hover { background: var(--peach); color: var(--overdue); }
 
@@ -501,6 +533,7 @@ kbd {
   --ring: #7fb79e;
   display: flex; align-items: center; justify-content: space-between; gap: 18px;
   min-height: 152px; border: 0; border-radius: 16px; padding: 22px; background: var(--mint);
+  box-shadow: inset 0 1px rgb(255 255 255 / 30%);
   transition: transform .22s var(--ease), box-shadow .22s var(--ease);
 }
 @media (hover: hover) {
@@ -510,6 +543,8 @@ kbd {
 .project-card.blue { --ring: #8badea; background: var(--blue); }
 .project-card.teal { --ring: #7fb79e; background: var(--mint); }
 .project-card.lavender { --ring: #a495dc; background: var(--lavender); }
+.project-card.amber { --ring: #d5a45d; background: var(--amber); }
+.project-card.rose { --ring: #cf8299; background: var(--rose); }
 .project-copy { min-width: 0; }
 .project-card h3 { margin: 0 0 6px; font-size: .9375rem; letter-spacing: -.2px; }
 .project-card p { min-height: 32px; margin: 0 0 14px; color: var(--ink-2); font-size: .8125rem; line-height: 1.45; }
@@ -548,7 +583,7 @@ kbd {
 .filters { display: flex; gap: 18px; }
 .filter { border: 0; border-bottom: 2px solid transparent; padding: 6px 0; background: transparent; color: var(--ink-3); font-size: .875rem; }
 .filter:hover { color: var(--ink); }
-.filter.active { border-color: var(--accent-line); color: var(--ink); font-weight: 600; }
+.filter.active { border-color: #7fa7e5; color: var(--ink); font-weight: 600; }
 .search-field { position: relative; display: flex; align-items: center; }
 .search-field input { width: 232px; padding-right: 34px; }
 .search-field kbd { position: absolute; right: 9px; pointer-events: none; }
@@ -564,7 +599,7 @@ kbd {
 .chip {
   display: inline-flex; align-items: center; gap: 7px;
   border: 0; border-radius: 999px; padding: 6px 12px;
-  background: var(--lavender); color: var(--accent); font-size: .75rem; font-weight: 600;
+  background: var(--amber); color: var(--today); font-size: .75rem; font-weight: 600;
 }
 .chip:hover { filter: brightness(.97); }
 .chip span { font-size: .9375rem; line-height: 1; opacity: .7; }
@@ -575,6 +610,13 @@ kbd {
 .clear-filters:hover { color: var(--accent); }
 
 .team-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 20px 44px; align-items: start; }
+.team-card { --team-tint: var(--lavender); border-radius: 16px; padding: 18px 20px 8px; background: color-mix(in oklab, var(--team-tint) 42%, var(--surface)); }
+.team-card.person-coral { --team-tint: var(--peach); }
+.team-card.person-teal { --team-tint: var(--mint); }
+.team-card.person-blue { --team-tint: var(--blue); }
+.team-card.person-lavender { --team-tint: var(--lavender); }
+.team-card.person-amber { --team-tint: var(--amber); }
+.team-card.person-rose { --team-tint: var(--rose); }
 .team-heading { display: flex; align-items: center; gap: 11px; margin-bottom: 12px; }
 .office-note { margin: 0 0 26px; color: var(--ink-3); font-size: .8125rem; }
 .empty { padding: 34px 4px; color: var(--ink-3); font-size: .875rem; text-align: center; }
@@ -736,7 +778,7 @@ input:focus, select:focus, textarea:focus {
 }
 
 @media (max-width: 780px) {
-  .sidebar { position: static; width: auto; padding: 16px 14px 10px; }
+  .sidebar { position: static; width: auto; padding: 16px 14px 10px; border-right: 0; border-bottom: 1px solid var(--line); }
   .brand { margin-bottom: 14px; }
   .sidebar nav { display: flex; gap: 4px; overflow-x: auto; scrollbar-width: none; }
   .sidebar nav::-webkit-scrollbar { display: none; }

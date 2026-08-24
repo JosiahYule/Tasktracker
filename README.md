@@ -59,7 +59,7 @@ the app.
 ```sql
 insert into public.invitations (email, display_name, role, title, office, accent, sort_order) values
   ('michaila@yourcompany.ca', 'Michaila',  'member', 'Controller',        'Halifax',       'coral',    1),
-  ('brady@yourcompany.ca',    'Brady',     'member', 'Senior Accountant', 'Charlottetown', 'teal',     2),
+  ('brady@yourcompany.ca',    'Brady',     'member', 'Senior Accountant', 'Charlottetown', 'rose',     2),
   ('you@yourcompany.ca',      'Your name', 'admin',  'Administrator',     'Halifax',       'lavender', 3)
 on conflict (email) do nothing;
 ```
