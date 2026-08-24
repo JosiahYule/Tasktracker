@@ -274,7 +274,7 @@ button { cursor: pointer; }
   text-align: left; transition: background .15s, color .15s;
 }
 .nav-item:hover { background: var(--surface-2); color: var(--ink); }
-.nav-item.active { background: var(--blue); color: var(--ink); font-weight: 600; box-shadow: inset 3px 0 #6e91cf; }
+.nav-item.active { background: var(--blue); color: var(--ink); font-weight: 600; }
 .nav-count {
   min-width: 22px; padding: 2px 7px; border-radius: 999px;
   background: var(--calm-soft); color: var(--ink-3);

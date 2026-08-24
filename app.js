@@ -137,8 +137,14 @@ function personFor(name) {
 }
 
 const PERSON_ACCENTS = new Set(['coral', 'teal', 'blue', 'lavender', 'amber', 'rose']);
+const PERSON_NAME_ACCENTS = new Map([
+  ['michaila', 'coral'],
+  ['brady', 'teal']
+]);
 
 function personAccent(name) {
+  const assignedAccent = PERSON_NAME_ACCENTS.get(String(name || '').trim().toLowerCase());
+  if (assignedAccent) return assignedAccent;
   const accent = personFor(name)?.accent;
   return PERSON_ACCENTS.has(accent) ? accent : 'lavender';
 }
